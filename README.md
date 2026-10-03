@@ -1,13 +1,13 @@
 # Data_engineering_F1_project_group_26
 
-##Team Members
+## Team Members
 Ahto Kiil
 Dagmar Läänemets
 Georg Allikas
 Kerttu Tilk
 Teemu-Oliver Soorm
 
-##Buisness Questions
+## Buisness Questions
 1. How frequently does the pole position (P1) qualifier win the race? 
 
 2. Which teams gained or lost the most net positions across the season? 
