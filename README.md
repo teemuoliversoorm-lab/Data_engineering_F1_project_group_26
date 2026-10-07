@@ -5,7 +5,7 @@
 - Dagmar Läänemets,
 - Georg Allikas,
 - Kerttu Tilk,
-- Teemu-Oliver Soorm
+- Teemu-Oliver Soorm.
 
 ## Project Goal
 To build an analytical data platform that analyzes the relationship between qualifying performance, race outcomes, weather conditions, and constructor performance across the 2025 and 2026 Formula 1 seasons.
