@@ -1,3 +1,18 @@
+-- =============================================================================
+-- Sample / Illustrative Data
+-- =============================================================================
+-- This file contains small, hand-crafted sample rows for every table in the
+-- star schema (create_schema.sql). It does NOT come from the FastF1 API and
+-- is NOT produced by the real ingestion pipeline (Airflow -> raw landing ->
+-- dbt -> PostgreSQL). Its purpose is purely for:
+--   1. Validating that create_schema.sql runs cleanly (correct DDL syntax,
+--      valid FK relationships, etc.).
+--   2. Providing deterministic, known inputs so the analytical queries in
+--      query_01...query_06 can be test-run and their logic verified without
+--      waiting on a working end-to-end pipeline.
+--   3. Demos/grading, where running the full pipeline is impractical.
+-- =============================================================================
+
 INSERT INTO DimDriver (
     DriverKey,
     DriverId,
@@ -41,6 +56,23 @@ VALUES
     '2025-03-14',
     '2025-03-16'
 );
+
+
+INSERT INTO FactLap (
+    EventKey,
+    DriverKey,
+    TeamKey,
+    SessionType,
+    LapNumber,
+    LapPosition,
+    TrackStatus,
+    LapTime
+)
+VALUES
+(1, 2, 2, 'Race', 1, 1, '1', 82.104),
+(1, 1, 1, 'Race', 1, 2, '1', 83.251),
+(1, 2, 2, 'Race', 2, 1, '1', 81.987),
+(1, 1, 1, 'Race', 2, 2, '1', 82.760);
 
 
 INSERT INTO FactDriverEventResult (

@@ -98,6 +98,11 @@ The warehouse implements a multi-fact star schema with two fact tables (`FactLap
 
 See the full schema, SCD strategy, and data dictionary in [`Reports/Project_long_version.md`](Reports/Project_long_version.md#5-data-model).
 
+The [`SQL/`](SQL) folder contains:
+- `create_schema.sql` — DDL for the full star schema (dimensions + fact tables).
+- `sample_data.sql` — Small, hand-crafted sample rows for every table. **This is illustrative/test data only** — it does not come from the FastF1 API or the real ingestion pipeline. It exists to (1) validate that `create_schema.sql` runs cleanly, and (2) provide known inputs to test-run and verify the logic of the analytical queries below without needing a working end-to-end pipeline.
+- `query_01` – `query_06` — The six analytical queries answering the business questions above.
+
 ---
 
 ## Repository Structure
@@ -105,8 +110,17 @@ See the full schema, SCD strategy, and data dictionary in [`Reports/Project_long
 ```
 .
 ├── README.md
-└── Reports/
-    ├── Project_long_version.md          # Full project proposal
+├── Reports/
+│   └── Project_long_version.md          # Full project proposal
+└── SQL/
+    ├── create_schema.sql                 # Star schema DDL
+    ├── sample_data.sql                   # Illustrative sample rows (not pipeline output)
+    ├── query_01_pole_wins.sql
+    ├── query_02_team_position_change.sql
+    ├── query_03_driver_position_change.sql
+    ├── query_04_lap1_leader.sql
+    ├── query_05_teammate_comparison.sql
+    └── query_06_biggest_gap_win.sql
 ```
 
 ---
