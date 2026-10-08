@@ -89,12 +89,12 @@ Our data warehouse implements a multi-fact star schema design to support both fi
 ### Fact Tables & Grains
 
 **1. FactLap** (Grain: one row per driver, per lap, per session, per event)
-- **Foreign Keys:** `EventKey`, `DriverKey`, `TeamKey`, `DriverTeamAssignmentKey`
+- **Foreign Keys:** `EventKey`, `DriverKey`, `TeamKey`
 - **Degenerate Dimensions / Attributes:** `SessionType` (qualifying, race, sprint), `LapNumber`, `LapPosition`, `TrackStatus`
 - **Measures:** `LapTime` (seconds)
 
 **2. FactDriverEventResult** (Grain: one row per driver, per event summary)
-- **Foreign Keys:** `EventKey`, `DriverKey`, `TeamKey`, `DriverTeamAssignmentKey`
+- **Foreign Keys:** `EventKey`, `DriverKey`, `TeamKey`
 - **Measures:** `QualifyingPosition`, `GridPosition`, `FinishPosition`, `PlacesGainedLost`, `QualifyingGapToPole`, `Points`
 
 ### Dimension Tables & SCD Justification

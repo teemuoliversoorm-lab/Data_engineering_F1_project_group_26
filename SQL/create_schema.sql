@@ -4,7 +4,7 @@ CREATE TABLE DimDriver (
     DriverNumber INT,
     FullName VARCHAR(100) NOT NULL,
     Abbreviation CHAR(3),
-    CountryCode CHAR(3),
+    CountryCode CHAR(3)
 );
 
 
@@ -23,7 +23,7 @@ CREATE TABLE DimEvent (
     Country VARCHAR(100),
     CircuitName VARCHAR(100),
     StartDate DATE,
-    EndDate DATE,
+    EndDate DATE
 );
 
 
