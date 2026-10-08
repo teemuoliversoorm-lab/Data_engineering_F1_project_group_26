@@ -1,6 +1,6 @@
 SELECT
     e.EventName,
-    d.DriverName,
+    d.DriverId,
     r.QualifyingPosition,
     r.QualifyingGapToPole
 FROM FactDriverEventResult r
