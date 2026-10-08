@@ -1,7 +1,7 @@
 SELECT
     e.EventName,
     t.TeamName,
-    d.DriverName,
+    d.DriverId,
     r.QualifyingPosition,
     r.FinishPosition,
     r.QualifyingGapToPole
