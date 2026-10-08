@@ -187,3 +187,4 @@ Our data warehouse implements a multi-fact star schema design to support both fi
 
 - https://claude.ai/share/3355e7f2-f57f-496a-b356-fa8ccbd2a804
 - https://chatgpt.com/share/6ac4b1cf-76fc-83ed-9fd4-a50ae037c74f
+- https://chatgpt.com/share/6ac6820a-ce9c-83ed-a26d-dca92a490eb4 
