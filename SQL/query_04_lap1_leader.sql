@@ -1,6 +1,6 @@
 SELECT
     e.EventName,
-    d.DriverName
+    d.DriverId
 FROM FactLap l
 JOIN DimEvent e
     ON l.EventKey = e.EventKey
