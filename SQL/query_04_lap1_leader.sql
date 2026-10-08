@@ -11,4 +11,5 @@ JOIN FactDriverEventResult r
    AND l.DriverKey = r.DriverKey
 WHERE r.QualifyingPosition = 1
   AND l.LapNumber = 1
-  AND l.LapPosition = 1;
+  AND l.LapPosition = 1
+  AND l.SessionType = "Race";
