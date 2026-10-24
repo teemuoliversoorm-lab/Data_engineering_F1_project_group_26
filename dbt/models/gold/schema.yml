@@ -1,0 +1,84 @@
+version: 2
+models:
+  - name: dimdriver
+    description: "Driver identity, Type 1; latest observed source attributes."
+    columns:
+      - name: driverkey
+        description: "Deterministic key derived from source identifiers."
+        tests: [unique, not_null]
+  - name: dimteam
+    description: "Constructor identity, Type 1."
+    columns:
+      - name: teamkey
+        description: "Deterministic key derived from source identifiers."
+        tests: [unique, not_null]
+  - name: dimevent
+    description: "One season and championship round, Type 1."
+    columns:
+      - name: eventkey
+        description: "Deterministic key derived from source identifiers."
+        tests: [unique, not_null]
+  - name: dimdriverteamassignment
+    description: "Type 2 observed driver-team history, with half-open date intervals."
+    columns:
+      - name: driverteamassignmentkey
+        description: "Deterministic key derived from source identifiers."
+        tests: [unique, not_null]
+      - name: driverkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimdriver')
+              field: driverkey
+      - name: teamkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimteam')
+              field: teamkey
+  - name: factlap
+    description: "Grain: one event, session, driver and lap."
+    columns:
+      - name: driverkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimdriver')
+              field: driverkey
+      - name: teamkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimteam')
+              field: teamkey
+      - name: eventkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimevent')
+              field: eventkey
+  - name: factdrivereventresult
+    description: "Grain: one main-race event and driver; qualifying is joined separately."
+    columns:
+      - name: driverkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimdriver')
+              field: driverkey
+      - name: teamkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimteam')
+              field: teamkey
+      - name: eventkey
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimevent')
+              field: eventkey
+      - name: classificationavailable
+        description: "True when the race participant has an actual OpenF1 classification; false retains observed participation with unknown result metrics."
+      - name: qualifyingclassificationavailable
+        description: "Availability of the joined qualifying classification; null means no matching qualifying participant."

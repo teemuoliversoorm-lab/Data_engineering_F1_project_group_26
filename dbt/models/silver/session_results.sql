@@ -1,0 +1,21 @@
+select
+    season, round_number, session_type, driver_number, driver_id, team_id,
+    (source_record ->> 'Position')::numeric::integer as position,
+    coalesce((source_record ->> 'ClassificationAvailable')::boolean, true) as classification_available,
+    source_record ->> 'PositionStatusCode' as position_status_code,
+    (source_record ->> 'GridPosition')::numeric::integer as grid_position,
+    (source_record ->> 'Points')::numeric as points,
+    source_record ->> 'Status' as status,
+    source_record ->> 'FullName' as full_name,
+    source_record ->> 'Abbreviation' as abbreviation,
+    source_record ->> 'CountryCode' as country_code,
+    source_record ->> 'TeamName' as team_name,
+    extract(epoch from (source_record ->> 'Q1')::interval)::numeric(12,3) as q1_seconds,
+    extract(epoch from (source_record ->> 'Q2')::interval)::numeric(12,3) as q2_seconds,
+    extract(epoch from (source_record ->> 'Q3')::interval)::numeric(12,3) as q3_seconds,
+    (metadata ->> 'session_date')::date as session_date,
+    (metadata ->> 'event_date')::date as event_date,
+    metadata ->> 'event_name' as event_name,
+    metadata ->> 'country' as country,
+    metadata ->> 'circuit_name' as circuit_name
+from {{ source('bronze', 'session_results') }}

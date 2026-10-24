@@ -1,0 +1,10 @@
+.git
+.env
+.venv
+tmp
+output
+docs/*.pdf
+__pycache__
+.pytest_cache
+dbt/target
+dbt/logs

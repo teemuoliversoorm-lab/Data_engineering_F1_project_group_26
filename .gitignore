@@ -1,0 +1,11 @@
+/docs/*.pdf
+/output
+/tmp
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
