@@ -17,6 +17,16 @@ How raw OpenF1 fields become the warehouse's field names (see
 
 ## Known limitations
 
+- **OpenF1 blocks ALL requests (even for past seasons) while any F1 session is
+  live.** Every endpoint returns `401 Unauthorized` with
+  `"Live F1 session in progress. Global API access (including past sessions)
+  is restricted to authenticated users until the session ends."` This is not
+  a bug in this pipeline — `ingestion/openf1.py` surfaces it as
+  `SourceUnavailableError` and the affected task simply fails and can be
+  retried once the session ends (practice/qualifying/race weekends are the
+  main windows this happens). Airflow's task retries (2, with a 2-minute
+  delay) may not be enough to outlast a full session; re-trigger manually
+  afterward if a scheduled run fails for this reason.
 - **Lap-end position is approximate.** OpenF1 has no per-lap position field.
   The pipeline takes the most recent `position` sample at or before each lap's
   end time (`PositionMethod: nearest_sample_at_or_after_lap_end`). This is
@@ -31,3 +41,10 @@ How raw OpenF1 fields become the warehouse's field names (see
   gold compares `coalesce(Q3, Q2, Q1)` for both drivers; if one reached Q3 and
   the other was eliminated in Q1, the gap reflects different track conditions.
   `SameStageComparison` in `factdrivereventresult` flags this.
+- **The weekly DAG never re-fetches a session already in bronze.**
+  `plan_sessions` skips any `(season, round, session_type)` already present,
+  so a scheduled run only costs API calls for genuinely new rounds. This
+  means a later OpenF1 correction to an already-loaded session (e.g. a
+  classification fix) won't be picked up automatically. Force a refresh of a
+  specific session with the CLI: `ingestion.cli ingest --season ... --round
+  ... --session ... --cutoff ...` (it always re-extracts and re-loads).

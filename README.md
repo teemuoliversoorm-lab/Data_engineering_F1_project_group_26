@@ -135,18 +135,32 @@ separate schemas in the same `f1_warehouse` database. The DAG starts **paused**.
 
 ## Run the pipeline
 
-**One session, via the CLI** (useful for debugging without the Airflow UI):
+**Fully automatic (default):** unpause `f1_ingestion` in the Airflow UI and
+trigger it with no configuration (or wait for the weekly schedule). It
+discovers every completed round for `seasons: [2025, 2026]` from OpenF1's own
+calendar and skips anything already loaded in bronze, so each run — whether
+weekly or manually triggered — only fetches genuinely new rounds:
+
+```sh
+docker compose run --rm pipeline -m unittest -v  # optional: verify first
+# then trigger f1_ingestion from the Airflow UI with an empty / default run configuration
+```
+
+Runs automatically **every Monday 07:00 Europe/Tallinn** (`schedule` in
+`00_dags/f1_ingestion.py`). You can override the defaults with a run
+configuration if needed, e.g. to backfill only one season:
+
+```json
+{"seasons": [2025], "sessions": ["Q", "R"], "cutoff": "2026-11-06"}
+```
+
+**One specific session, via the CLI** (useful for debugging, or to force a
+refresh of a session already in bronze — the DAG's weekly run won't
+re-fetch something it's already loaded, but the CLI always will):
 
 ```sh
 docker compose run --rm pipeline -m ingestion.cli ingest \
   --season 2025 --round 1 --session R --cutoff 2026-01-01
-```
-
-**Via Airflow:** unpause `f1_ingestion` in the UI, or trigger it with a run
-configuration:
-
-```json
-{"season": 2025, "rounds": [1, 2, 3], "sessions": ["Q", "R"], "cutoff": "2026-01-01"}
 ```
 
 Each `(round, session)` pair is extracted, data-quality checked, and loaded
@@ -269,6 +283,10 @@ scratch by re-running the DAG and `dbt build`).
 
 **`OpenF1 request failed after 3 attempts`** — OpenF1 occasionally rate-limits
 or has brief outages; re-run the same command, extraction is safe to retry.
+If the underlying error is `401 Unauthorized: "Live F1 session in progress..."`,
+OpenF1 blocks its **entire** public API (including past seasons) while any F1
+session is live, not just real-time data. Wait for the session to end and
+retry — see [`docs/data_model.md`](docs/data_model.md).
 
 **Port already in use** — change `POSTGRES_PORT` / `AIRFLOW_PORT` in `.env`.
 
