@@ -272,6 +272,19 @@ or has brief outages; re-run the same command, extraction is safe to retry.
 
 **Port already in use** — change `POSTGRES_PORT` / `AIRFLOW_PORT` in `.env`.
 
+**DAG doesn't appear in the Airflow UI, even though services are healthy** —
+check `docker compose logs airflow-scheduler` for `PermissionError` on
+`/opt/airflow/logs/scheduler/...`. This happens if the volume was initialized
+by an older version of `airflow-init`'s startup command (before it re-ran
+`chown` after `airflow db migrate`). Fix by re-running `docker compose run
+--rm airflow-init` followed by `docker compose restart airflow-scheduler
+airflow-webserver` — or simplest, `docker compose down -v` and start fresh.
+
+**Can't connect to PostgreSQL from a GUI client** — connect to `localhost:5433`
+(not `5432`, which is the separate `airflow-db` instance with different
+credentials), database `f1_warehouse`, user/password from `.env`'s
+`POSTGRES_USER`/`POSTGRES_PASSWORD`.
+
 ---
 
 ## LLM disclosure

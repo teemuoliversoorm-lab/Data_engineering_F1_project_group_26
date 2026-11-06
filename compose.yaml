@@ -78,6 +78,10 @@ services:
         if ! airflow users list --output json | python -c 'import json,os,sys; sys.exit(0 if any(u["username"] == os.environ["AIRFLOW_ADMIN_USER"] for u in json.load(sys.stdin)) else 1)'; then
           airflow users create --username "$${AIRFLOW_ADMIN_USER}" --password "$${AIRFLOW_ADMIN_PASSWORD}" --firstname F1 --lastname Admin --role Admin --email admin@example.local
         fi
+        # The commands above run as root and can create their own log directories
+        # (e.g. logs/scheduler/<date>/) owned by root. Chown again so the
+        # scheduler, which runs as AIRFLOW_UID, can write into them.
+        chown -R "$${AIRFLOW_UID}:0" /opt/airflow/logs
 
   airflow-webserver:
     <<: *airflow
