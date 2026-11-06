@@ -6,5 +6,5 @@ output
 docs/*.pdf
 __pycache__
 .pytest_cache
-dbt/target
-dbt/logs
+02_dbt/target
+02_dbt/logs

@@ -1,4 +1,5 @@
 SELECT
+    e.Season,
     e.EventName,
     d.DriverId
 FROM FactLap l
@@ -12,4 +13,5 @@ JOIN FactDriverEventResult r
 WHERE r.QualifyingPosition = 1
   AND l.LapNumber = 1
   AND l.LapPosition = 1
-  AND l.SessionType = 'Race';
+  AND l.SessionType = 'Race'
+ORDER BY e.Season, e.EventName;

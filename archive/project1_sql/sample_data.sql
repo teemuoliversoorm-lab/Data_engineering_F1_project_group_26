@@ -1,5 +1,7 @@
 -- =============================================================================
 -- Sample / Illustrative Data
+-- Project 1 legacy: NOT used by the running pipeline (dbt builds the real gold
+-- schema from bronze -- see 02_dbt/models/gold/). Kept for traceability only.
 -- =============================================================================
 -- This file contains small, hand-crafted sample rows for every table in the
 -- star schema (create_schema.sql). It does NOT come from the FastF1 API and

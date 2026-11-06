@@ -1,36 +1,23 @@
 # F1 Analytics Data Platform
 
-**Data Engineering Project — Group 26**
+**Data Engineering Project 2 — Group 26**
 University of Tartu, III Semester
 
-An analytical data platform that evaluates the impact of qualifying performance on race outcomes and tracks constructor performance across the 2025 and 2026 Formula 1 seasons.
+An analytical pipeline that ingests Formula 1 qualifying/race data from the
+[OpenF1 API](https://openf1.org/docs/), loads it through a bronze → silver →
+gold medallion architecture in PostgreSQL (orchestrated by Airflow, transformed
+by dbt), and answers six business questions about qualifying vs. race
+performance for the 2025–2026 seasons.
 
-For the full project proposal, including the detailed data architecture, data model, and data dictionary, see [`Reports/Project_long_version.md`](Reports/Project_long_version.md).
+**Team:** Ahto Kiil, Dagmar Läänemets, Georg Allikas, Kerttu Tilk, Teemu-Oliver Soorm
 
----
-
-## Team Members
-
-- Ahto Kiil
-- Dagmar Läänemets
-- Georg Allikas
-- Kerttu Tilk
-- Teemu-Oliver Soorm
+For the original Project 1 proposal (FastF1-based, before the source switch to
+OpenF1), see [`Reports/Project_1_long_version.md`](Reports/Project_1_long_version.md).
+For the Project 2 assignment brief, see [`Reports/Project_2.md`](Reports/Project_2.md).
 
 ---
 
-## Project Goal
-
-To build an analytical data platform that analyzes the relationship between qualifying performance, race outcomes, weather conditions, and constructor performance across the 2025 and 2026 Formula 1 seasons.
-
-**Stakeholders:** F1 race team strategy analysts, sports media, fans
-
-Weather enrichment is planned. The implemented datasets support the six timing/result
-questions below; weather data has not been ingested.
-
----
-
-## Business Questions
+## Business questions
 
 1. How frequently does the pole position (P1) qualifier win the race?
 2. Which teams gained or lost the most net positions across the season?
@@ -41,267 +28,254 @@ questions below; weather data has not been ingested.
 
 ---
 
-## Key Metrics
+## Repository layout
 
-| Metric | Description |
-|---|---|
-| **Position Change Delta** (Net Positions Gained/Lost) | Difference between starting grid position and final finishing position. |
-| **Qualifying Gap to Pole** (Time Delta) | The gap (in seconds) between a driver's qualifying time and the P1 pole position time. |
-| **Lap 1 Leader Retention Rate** | Percentage of races where the pole sitter (P1) maintains the lead at the end of Lap 1. |
-
----
-
-## Data Sources
-
-The active pipeline uses [OpenF1's public historical API](https://openf1.org/docs/),
-covering 2025 and completed 2026 sessions. Historical access is free without an account.
-OpenF1 replaced the original proposal's FastF1 source after F1 restricted archive access.
-
-| Dataset | OpenF1 endpoint | Description |
-|---|---|---|
-| **Lap Timing** | OpenF1 `laps`, plus `position` | Lap timing and approximate as-of race positions; track status is currently null. |
-| **Session Results & Qualifying Summary** | OpenF1 `session_result`, `starting_grid`, `drivers` | Main Q/R classifications, Q1/Q2/Q3 times, race points and available grid positions. |
-
----
-
-## Architecture Overview
-
-```
-OpenF1 historical API → Airflow → Raw Landing (Docker volume, JSON)
-           → PostgreSQL bronze → dbt silver views → dbt gold star schema
-           → SQL queries (dashboards planned)
-```
-
-1. **Data Source:** Public OpenF1 HTTP API; ingestion currently uses historical laps, results and supporting metadata.
-2. **Ingestion:** Parameterized Python extraction through an Airflow DAG. Historical backfills are triggered explicitly; the paused weekly schedule currently uses a 2025 round-1 example.
-3. **Raw Landing Storage:** Extracted payloads are persisted as JSON files in persistent Docker volumes.
-4. **Loading & Transformation (ELT):** Validated source records are loaded into PostgreSQL bronze; a separate dbt build creates silver views and the gold star schema.
-5. **Data Quality:** Ingestion validates identities, duplicates, ranges and checksums; PostgreSQL constraints and dbt tests verify keys, relationships and fact grains.
-6. **Reporting / Serving:** Direct SQL queries run against gold. Superset / Streamlit dashboards are planned; business-rule validation of the draft queries remains in 2.3.
-
-**Planned update frequency:** After race weekends. Available 2025 data and completed 2026 weekends through the 22 October cutoff are loaded. New-weekend selection and automatic Airflow-to-dbt execution remain to be implemented.
-
----
-
-## Tooling
-
-| Category | Tools |
-|---|---|
-| Infrastructure & Containerization | Docker |
-| Data Ingestion | Python standard library (OpenF1 HTTP API), Apache Airflow |
-| Data Storage (Landing) | Docker volumes |
-| Transformation & Modeling | dbt, ER Diagrams / Star Schema design |
-| Data Warehouse | PostgreSQL |
-| Governance & Metadata | OpenMetadata (planned) |
-| Reporting & Analytics | Direct SQL; Apache Superset / Streamlit (planned) |
-
----
-
-## Data Model
-
-The warehouse implements a multi-fact star schema with two fact tables (`FactLap`, `FactDriverEventResult`) and four dimensions (`DimDriver`, `DimTeam`, `DimDriverTeamAssignment`, `DimEvent`).
-
-See the full schema, SCD strategy, and data dictionary in [`Reports/Project_long_version.md`](Reports/Project_long_version.md#5-data-model).
-
-The [`SQL/`](SQL) folder contains:
-- `create_schema.sql` — DDL for the full star schema (dimensions + fact tables).
-- `sample_data.sql` — Small, hand-crafted sample rows for every table. **This is illustrative/test data only** — it does not come from the OpenF1 API or the real ingestion pipeline. It exists to (1) validate that `create_schema.sql` runs cleanly, and (2) provide known inputs to test-run and verify the logic of the analytical queries below without needing a working end-to-end pipeline.
-- `query_01` – `query_06` — Draft analytical queries for the six business questions. They execute against gold; season grouping, teammate pairing and metric eligibility need refinement in 2.3. See [README_Phase2](README_Phase2.md).
-
----
-
-## Project 1 Repository Structure
+Top-level folders are numbered in pipeline order, so the data flow is visible
+at a glance:
 
 ```
 .
-├── README.md
-├── Reports/
-│   └── Project_long_version.md          # Full project proposal
-└── SQL/
-    ├── create_schema.sql                 # Star schema DDL
-    ├── sample_data.sql                   # Illustrative sample rows (not pipeline output)
-    ├── query_01_pole_wins.sql
-    ├── query_02_team_position_change.sql
-    ├── query_03_driver_position_change.sql
-    ├── query_04_lap1_leader.sql
-    ├── query_05_teammate_comparison.sql
-    └── query_06_biggest_gap_win.sql
+├── 00_dags/            Airflow DAG — the entry point you trigger
+│   └── f1_ingestion.py
+├── 01_ingestion/        Python: OpenF1 client, data-quality checks, bronze loader
+│   ├── openf1.py         API client + field mapping
+│   ├── quality.py        the data-quality check + parameter validation
+│   ├── extract.py        pulls and adapts one session (laps + results)
+│   ├── load_bronze.py    idempotent load into bronze
+│   ├── cli.py             manual debugging entry point
+│   └── sql/bronze_setup.sql
+├── 02_dbt/              dbt project: bronze -> silver -> gold
+│   └── models/{silver,gold}/
+├── 03_queries/          the 6 business-question SQL queries (run against gold)
+├── archive/             Project 1 legacy, not used by the running pipeline
+├── docs/data_model.md   OpenF1 field mapping + known limitations
+├── tests/test_pipeline.py
+├── docker/              Dockerfiles for warehouse, airflow, dbt images
+└── compose.yaml
 ```
 
 ---
 
-## Project 2 implementation: sections 2.1 and 2.2
+## Architecture
 
-Airflow ingests OpenF1 lap timing and session results into PostgreSQL. Bronze preserves raw API responses, adapted compatibility
-records and provenance, silver contains typed dbt views, and gold contains the
-four dimensions and two fact tables from Project 1. The ingestion DAG ends at
-bronze; run dbt separately to build gold. Airflow-to-dbt automation in section 2.4
-is a later integration task.
+```
+  OpenF1 API
+      |  laps, session_result (+ drivers, grid, position)
+      v
+  00_dags/  Airflow: extract -> check -> load, one session at a time
+      |
+      v
+  bronze    PostgreSQL, raw JSONB, one row per driver/lap or driver/session
+      |
+      v
+  02_dbt/   silver (typed views) -> gold (star schema: 2 facts, 4 dims)
+      |
+      v
+  03_queries/  the 6 business-question SQL queries
+```
 
-See [storage design and verification](docs/ingestion_storage.md) for the PostgreSQL
-justification and failure/recovery rules, and [the data contract](docs/data_contract.md)
-for fields, grains, units and null rules.
+1. **Source:** OpenF1's public historical API — `laps` and `session_result` are
+   the two distinct datasets (different grain: per-lap vs. per-driver-per-session).
+2. **Ingestion:** an Airflow DAG (`00_dags/f1_ingestion.py`) extracts, data-quality
+   checks, and loads one `(season, round, session)` batch at a time. Re-running
+   the same batch is a no-op in terms of row count — see [Idempotency](#idempotency).
+3. **Storage:** PostgreSQL, chosen because the workload is relational joins across
+   a handful of dimensions (driver/team/event) at season scale — no need for a
+   columnar or distributed engine, and it's what dbt and Airflow both integrate
+   with cleanly. Bronze/silver/gold are separate schemas in the same database.
+4. **Transformation:** dbt builds silver (typed, cleaned views) and gold (the
+   Project 1 star schema: 2 fact tables, 4 dimensions) from bronze.
+5. **Serving:** the 6 business questions are plain SQL against gold (see
+   [`03_queries/`](03_queries)). Dashboards are out of scope for this submission.
 
-### Setup
+---
 
-Install Docker Desktop with Linux containers (or Docker Engine with Compose v2).
-Allow roughly 4 GB of Docker memory. In Ubuntu WSL, enable Docker Desktop
-integration for Ubuntu so the Docker CLI can reach the engine. Source code is
-copied into images and needs no project bind mounts. See [START](START.md) for
-startup, credentials, dated backfills and database inspection.
+## Data sources
 
-Copy the configuration once: `cp .env.example .env` in Linux/WSL, or
-`Copy-Item .env.example .env` in PowerShell. Edit the local passwords and secret
-key before first startup; keep the Airflow database password URL-safe. Existing
-database volumes retain their original credentials.
+| Dataset | OpenF1 endpoint | Grain |
+|---|---|---|
+| Lap timing | `laps`, plus `position` for approximate lap-end position | One row per driver, per lap, per session |
+| Session results | `session_result`, `starting_grid`, `drivers` | One row per driver, per session |
+
+See [`docs/data_model.md`](docs/data_model.md) for the full field mapping and
+known OpenF1 limitations (approximate lap positions, name-derived driver/team IDs).
+
+---
+
+## Data model
+
+Gold is a star schema with two fact tables and four dimensions:
+
+- **FactLap** — one row per driver, lap, session, event
+- **FactDriverEventResult** — one row per driver, per race event (qualifying joined in)
+- **DimDriver**, **DimTeam**, **DimEvent** (Type 1), **DimDriverTeamAssignment** (Type 2, tracks mid-season team changes)
+
+Full column-level data dictionary and SCD justification:
+[`Reports/Project_1_long_version.md`](Reports/Project_1_long_version.md#5-data-model)
+(unchanged from Project 1 — see that doc for why).
+
+---
+
+## Setup
+
+Requires Docker Desktop (Linux containers) or Docker Engine with Compose v2.
 
 ```sh
+cp .env.example .env        # edit passwords before first startup
 docker compose --profile tools build
 docker compose up -d
-docker compose ps
+docker compose ps           # wait for warehouse / airflow-webserver / airflow-scheduler healthy
 ```
 
-Initialization creates the warehouse schemas, migrates the separate Airflow
-metadata database and creates the admin user. Wait for the webserver and scheduler
-to become healthy. Open [Airflow](http://localhost:8080) and log in with the
-AIRFLOW_ADMIN_USER/AIRFLOW_ADMIN_PASSWORD values in .env. PostgreSQL is available
-at localhost:5433 with the POSTGRES_* credentials. The DAG starts paused.
+Airflow UI: http://localhost:8080 (credentials from `.env`).
+PostgreSQL: `localhost:5433` (credentials from `.env`); bronze/silver/gold are
+separate schemas in the same `f1_warehouse` database. The DAG starts **paused**.
 
-### Ingest one event
+---
 
-Run the complete DAG directly, including its mapped Q/R tasks:
+## Run the pipeline
+
+**One session, via the CLI** (useful for debugging without the Airflow UI):
 
 ```sh
-docker compose run --rm pipeline scripts/smoke_dag.py --season 2025 --rounds 1 --sessions Q R --cutoff 2025-03-18
+docker compose run --rm pipeline -m ingestion.cli ingest \
+  --season 2025 --round 1 --session R --cutoff 2026-01-01
 ```
 
-Alternatively, trigger `f1_ingestion` from the Airflow UI with this configuration:
+**Via Airflow:** unpause `f1_ingestion` in the UI, or trigger it with a run
+configuration:
 
 ```json
-{"season": 2025, "rounds": [1], "sessions": ["Q", "R"], "cutoff": "2025-03-18"}
+{"season": 2025, "rounds": [1, 2, 3], "sessions": ["Q", "R"], "cutoff": "2026-01-01"}
 ```
 
-Cutoff is an exclusive UTC date. Use the same command/configuration to rerun:
-identical inputs are skipped; corrected source records replace the selected
-session atomically. Each session loads both datasets. Missing/unavailable sources
-fail and retry without erasing earlier data.
+Each `(round, session)` pair is extracted, data-quality checked, and loaded
+independently — one failing session doesn't block the others. Re-running the
+same configuration is safe (see [Idempotency](#idempotency)).
 
-List the OpenF1 calendar mapping before choosing rounds:
-
-```sh
-docker compose run --rm pipeline -m ingestion.cli schedule --season 2025
-```
-
-For recovery in Ubuntu Bash, reuse validated files and explicitly retain
-available classifications when a lap source is missing:
-
-```bash
-docker compose run --rm pipeline scripts/smoke_dag.py \
-  --season 2025 --rounds {1..24} --sessions Q R --cutoff 2026-01-01 \
-  --reuse-landed --allow-missing-laps
-```
-
-Missing laps are flagged as unavailable, never synthesized. Omit
-`--reuse-landed` to refresh API data. Without `--allow-missing-laps`, missing
-required laps fail that session; other sessions can still load independently.
-
-For a historical backfill, supply multiple rounds, for example
-`--season 2025 --rounds 1 2 3 --cutoff 2026-01-01`. Continue with the actual rounds
-from that calendar mapping. For 2026, include only completed rounds before the
-chosen cutoff; do not represent the season as complete. The Tuesday 06:00 UTC
-schedule uses the defaults in the DAG (currently the small 2025 round-1 example).
-Change those defaults before unpausing a different recurring coverage.
-
-### Build the analytical storage
+**Build the warehouse (dbt):**
 
 ```sh
 docker compose run --rm dbt build
-docker compose exec warehouse psql -U f1 -d f1_warehouse
 ```
 
-In psql, use `SET search_path TO gold, public;` before running the Project 1 SQL
-queries. Substitute your configured user/database if you changed them. The gold
-tables use deterministic text keys, numeric points, and indexed fact grains.
-Bronze refreshes incrementally by session; gold currently rebuilds from all
-available bronze data, which correctly propagates corrected and removed records.
+---
 
-The original `SQL/create_schema.sql` and `SQL/sample_data.sql` remain the Project 1
-illustration. They are not run against the implemented warehouse; dbt owns gold.
+## Idempotency
 
-```mermaid
-flowchart LR
-    P[plan_sessions] --> G
-    subgraph G[Mapped independently per event/session]
-        E[extract] --> C[check: hashes, counts, keys, ranges]
-        C --> L[load: transactional PostgreSQL bronze]
-    end
-    L -. manual dbt build .-> S[silver views]
-    S --> D[4 dimensions]
-    S --> F[2 facts]
-    D --> F
-```
+`01_ingestion/load_bronze.py` loads one session batch by deleting any existing
+rows for that `(season, round, session_type)` and inserting the freshly
+extracted rows, in a single transaction. Running the same input again produces
+the same final row counts — no duplicates, no failure. This was verified with
+a real session loaded twice (928 laps / 20 results both times) and is covered
+by `tests/test_pipeline.py::IdempotencyTests`.
 
-### Verify without network access
+---
 
-The tests use a newly created temporary PostgreSQL database and labelled synthetic
-fixtures. They do not insert fixture rows into the warehouse.
+## Verify
 
 ```sh
-docker compose run --rm -e F1_TEST_POSTGRES=1 pipeline -m unittest discover -s tests -v
+# Fast tests (data-quality checks + field mapping, no database needed)
+docker compose run --rm pipeline -m unittest tests.test_pipeline -v
+
+# Full suite, including the idempotency test against a real temporary database
+docker compose run --rm -e F1_TEST_POSTGRES=1 pipeline -m unittest tests.test_pipeline -v
+
+# dbt tests (27 tests: uniqueness, not-null, relationships, fact grains, lap-time validity)
+docker compose run --rm dbt build
 ```
 
-To run the full mapped DAG twice and build gold using fixtures, create a **new**
-test database, then run dbt against it:
+---
 
-```sh
-docker compose run --rm pipeline scripts/prepare_fixture_database.py --database f1_storage_test
-docker compose run --rm -e PGDATABASE=f1_storage_test dbt build
-docker compose run --rm -e PGDATABASE=f1_storage_test pipeline scripts/check_fixture_gold.py
-```
+## Query results
 
-The preparation script refuses an existing database. After inspection, remove only
-that test database:
+Results below are from a real run on **6 November 2026**, covering the full
+2025 season (24 rounds) and every completed 2026 round through Mexico City
+(round 19 of 23; round 20, Brazil, is 8 November 2026 — not yet run). Two
+known OpenF1 gaps affect coverage: **Baku 2025 Qualifying** has no published
+lap data, so that one Q session (and its qualifying times) never loaded.
 
-```sh
-docker compose exec warehouse dropdb -U f1 f1_storage_test
-```
+**Q1 — how often does pole win the race?**
 
-Verified on 24 October 2026: 46 Python tests pass, including PostgreSQL rollback,
-concurrency, independent session loads, resume and idempotency checks. The available
-2025 Q/R data is loaded for all 24 rounds, and 2026 is loaded through the 17
-completed weekends ending at Singapore on 11 October (cutoff 22 October 2026).
-Azerbaijan 2025 qualifying laps are missing; 2026 Australia and Spain round 14
-qualifying have missing driver classifications. These are explicitly flagged.
-Observed lap participants retain null result metrics when classification is absent.
-All 82 stored session bundles replayed unchanged, including audit timestamps.
-The dbt build passed 8 models and 27 tests. All six SQL scripts execute; their
-business-rule gaps are listed in [README_Phase2](README_Phase2.md), alongside
-source counts, coverage and the steps remaining for 2.3.
+| races | pole wins | win % |
+|---|---|---|
+| 42 | 28 | 66.67 |
 
-The [data contract](docs/data_contract.md) records OpenF1-specific limitations:
-lap positions are approximate as-of observations; driver/team IDs are name-derived;
-missing grid positions, points and track status are not guessed. Original response
-arrays remain in `bronze.source_responses`. The original proposal in Reports retains
-its original FastF1 description as project history.
+**Q2 — net position change by team** (2025+2026 combined — see note below):
 
-### Development and replay
+| team | net positions | | team | net positions |
+|---|---|---|---|---|
+| Haas F1 Team | +186 | | Audi | +39 |
+| Williams | +120 | | Alpine | +30 |
+| Aston Martin | +111 | | Racing Bulls | +15 |
+| Red Bull Racing | +105 | | Mercedes | +1 |
+| Kick Sauber | +83 | | McLaren | -10 |
+| Cadillac | +59 | | Ferrari | +56 |
 
-Rebuild images after source changes:
-`docker compose --profile tools build`, then `docker compose up -d`.
-Data, landing files, request state and logs persist in named volumes.
-Use `docker compose down` to stop without deleting those volumes.
+**Q3 — net position change by driver** (top 5 / bottom 2 of 25):
 
-The CLI can extract, validate and replay a single session independently:
+| driver | net positions |
+|---|---|
+| Nico Hülkenberg | +93 |
+| Oliver Bearman | +90 |
+| Esteban Ocon | +88 |
+| Alexander Albon | +84 |
+| Lance Stroll | +74 |
+| ... | ... |
+| Pierre Gasly | -12 |
+| George Russell | -20 |
 
-```sh
-docker compose run --rm pipeline -m ingestion.cli extract --season 2025 --round 1 --session R --cutoff 2025-03-18
-docker compose run --rm pipeline -m ingestion.cli check /opt/airflow/data/2025/1/R/ATTEMPT/manifest.json
-docker compose run --rm pipeline -m ingestion.cli load /opt/airflow/data/2025/1/R/ATTEMPT/manifest.json
-```
+**Q4 — pole sitter leading after lap 1** (31 of 42 races; full list in
+[`03_queries/query_04_lap1_leader.sql`](03_queries/query_04_lap1_leader.sql) output):
+Lando Norris and Max Verstappen lead this list with 6 and 5 races respectively.
 
-Replace ATTEMPT with the directory printed by extraction. Use
-`docker compose run --rm pipeline -m ingestion.cli init-db` to reapply the additive
-bronze DDL to an existing volume.
+**Q5 — teammate qualifying/race gap:** 897 driver-event rows (one per
+driver/team/event, both seasons); see
+[`03_queries/query_05_teammate_comparison.sql`](03_queries/query_05_teammate_comparison.sql)
+for the full table. `query_05` doesn't label rows by season either — the same
+cross-season limitation as Q2/Q3/Q4 below.
 
-The implementation lives in `compose.yaml`, `docker/`, `dags/`, `ingestion/`,
-`SQL/bronze_setup.sql`, `dbt/`, `scripts/` and `tests/`.
+**Q6 — largest qualifying gap to pole among race winners:**
+
+| event | season | driver | qualifying position | gap to pole (s) |
+|---|---|---|---|---|
+| Las Vegas Grand Prix | 2025 | Max Verstappen | 2 | 0.323 |
+
+This answer was wrong before a fix found during this round of testing: the one
+race with an unknown qualifying gap (Baku 2025, see above) was being picked as
+the "largest" gap, because PostgreSQL sorts `NULL` as larger than any value in
+`ORDER BY ... DESC`. Fixed in `03_queries/query_06_biggest_gap_win.sql` by
+excluding rows with no known gap.
+
+**Known limitations in these results** (business-rule refinement, not yet
+done — see `Reports/Report.pdf` for the full writeup):
+- Q2, Q3 and Q5 combine 2025 and 2026 into one set of numbers rather than
+  reporting per season.
+- Q4 reports only races where the pole sitter *did* lead lap 1, not a
+  per-season rate with an explicit denominator.
+
+Full output for all 6 queries, plus Airflow DAG graph and dbt dependency
+screenshots, are in `Reports/Report.pdf`.
+
+---
+
+## Troubleshooting
+
+**`dependency failed to start: container warehouse is unhealthy`** — usually a
+leftover half-initialized volume from an interrupted first start. Fix with
+`docker compose down` then `docker volume rm data_engineering_f1_project_group_26_warehouse-data`
+and start again (this discards local warehouse data, which is rebuilt from
+scratch by re-running the DAG and `dbt build`).
+
+**`OpenF1 request failed after 3 attempts`** — OpenF1 occasionally rate-limits
+or has brief outages; re-run the same command, extraction is safe to retry.
+
+**Port already in use** — change `POSTGRES_PORT` / `AIRFLOW_PORT` in `.env`.
+
+---
+
+## LLM disclosure
+
+- 
+- 
+- 

@@ -1,4 +1,9 @@
-"""Project 2 sections 2.1/2.2: parameterized OpenF1 -> PostgreSQL bronze."""
+"""Project 2 sections 2.1/2.2: parameterized OpenF1 -> PostgreSQL bronze.
+
+One task group per (round, session) pair: extract -> check -> load. Mapping
+per session means one failed extraction doesn't block any other session's
+load (see ingest_session.expand below).
+"""
 
 from datetime import timedelta
 
@@ -23,54 +28,41 @@ from airflow.operators.python import get_current_context
                           items={"type": "string", "enum": ["Q", "R"]}),
         "cutoff": Param(None, type=["null", "string"], format="date",
                         description="Exclusive UTC date. Empty uses the DAG interval end date."),
-        "allow_missing_laps": Param(False, type="boolean",
-                                  description="Load available results with an explicit source gap; never invent lap rows."),
-        "reuse_landed": Param(False, type="boolean",
-                             description="Resume from latest validated historical bundle; do not refresh existing files."),
     },
     tags=["f1", "bronze", "postgresql"],
 )
 def f1_ingestion():
     @task
     def plan_sessions():
-        from ingestion.contracts import validate_parameters
+        from ingestion.quality import validate_parameters
         context = get_current_context()
         params = context["params"]
         cutoff = params["cutoff"] or context["data_interval_end"].date().isoformat()
         config = validate_parameters(params["season"], params["rounds"], params["sessions"], cutoff)
-        batches = [{"season": config["season"], "round_number": r, "session_type": s, "cutoff": cutoff}
-                   for r in config["rounds"] for s in config["sessions"]]
-        if params["reuse_landed"]:
-            for batch in batches:
-                batch["reuse_landed"] = True
-        if params["allow_missing_laps"]:
-            for batch in batches:
-                batch["allow_missing_laps"] = True
-        return batches
+        return [{"season": config["season"], "round_number": r, "session_type": s, "cutoff": cutoff}
+                for r in config["rounds"] for s in config["sessions"]]
 
     @task_group(group_id="ingest_session")
     def ingest_session(parameters):
-        @task(max_active_tis_per_dag=1, execution_timeout=timedelta(minutes=30))
+        @task(execution_timeout=timedelta(minutes=15))
         def extract(parameters):
             from ingestion.extract import extract_session
             return extract_session(**parameters)
 
         @task
-        def check(manifest_path):
-            from ingestion.load_bronze import read_bundle
-            manifest, _ = read_bundle(manifest_path)
-            print({name: spec["rows"] for name, spec in manifest["files"].items()})
-            return manifest_path
+        def check(payload):
+            from ingestion.quality import check_dataset
+            check_dataset("laps", payload["laps"])
+            check_dataset("session_results", payload["session_results"])
+            return payload
 
         @task
-        def load(manifest_path):
-            from ingestion.load_bronze import load_bundle
-            return load_bundle(manifest_path)
+        def load(payload):
+            from ingestion.load_bronze import load_session
+            return load_session(payload)
 
         load(check(extract(parameters)))
 
-    # A mapped group makes each check/load depend only on its own extraction.
-    # Mapping task outputs separately introduces a barrier across all sessions.
     ingest_session.expand(parameters=plan_sessions())
 
 

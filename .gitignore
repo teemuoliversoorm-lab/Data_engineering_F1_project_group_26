@@ -6,6 +6,6 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-dbt/target/
-dbt/logs/
-dbt/dbt_packages/
+02_dbt/target/
+02_dbt/logs/
+02_dbt/dbt_packages/

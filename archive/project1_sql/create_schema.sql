@@ -1,3 +1,5 @@
+-- Project 1 legacy: illustrative schema only, NOT used by the running pipeline.
+-- The real warehouse is built entirely by dbt -- see 02_dbt/models/gold/.
 CREATE TABLE DimDriver (
     DriverKey INT PRIMARY KEY,
     DriverId VARCHAR(50) NOT NULL UNIQUE,

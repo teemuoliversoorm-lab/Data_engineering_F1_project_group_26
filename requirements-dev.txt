@@ -1,2 +1,0 @@
--r requirements.txt
-# Tests use the Python standard-library unittest runner.
