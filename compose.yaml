@@ -77,12 +77,13 @@ services:
     command:
       - -ec
       - |
-        chown -R "$${AIRFLOW_UID}:0" /opt/airflow/data /opt/airflow/cache /opt/airflow/logs
         airflow db migrate
         python -m ingestion.cli init-db
         if ! airflow users list --output json | python -c 'import json,os,sys; sys.exit(0 if any(u["username"] == os.environ["AIRFLOW_ADMIN_USER"] for u in json.load(sys.stdin)) else 1)'; then
           airflow users create --username "$${AIRFLOW_ADMIN_USER}" --password "$${AIRFLOW_ADMIN_PASSWORD}" --firstname F1 --lastname Admin --role Admin --email admin@example.local
         fi
+        # The Airflow CLI can create scheduler log directories as root during init.
+        chown -R "$${AIRFLOW_UID}:0" /opt/airflow/data /opt/airflow/cache /opt/airflow/logs
 
   airflow-webserver:
     <<: *airflow
