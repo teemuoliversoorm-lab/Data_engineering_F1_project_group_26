@@ -1,20 +1,13 @@
-SELECT
-    COUNT(*) AS races,
-    SUM(CASE
-            WHEN QualifyingPosition = 1
-             AND FinishPosition = 1
-            THEN 1
-            ELSE 0
-        END) AS pole_wins,
+SELECT 
+    e.season,
+    COUNT(*) AS total_races_with_pole,
+    COUNT(*) FILTER (WHERE r.finishing_position = 1) AS pole_wins,
     ROUND(
-        100.0 * SUM(CASE
-                        WHEN QualifyingPosition = 1
-                         AND FinishPosition = 1
-                        THEN 1
-                        ELSE 0
-                    END)
-        / COUNT(*),
+        COUNT(*) FILTER (WHERE r.finishing_position = 1) * 100.0 / NULLIF(COUNT(*), 0), 
         2
-    ) AS win_percentage
-FROM FactDriverEventResult
-WHERE QualifyingPosition = 1;
+    ) AS pole_win_percentage
+FROM gold.factdrivereventresult r
+JOIN gold.dimevent e ON r.event_key = e.event_key
+WHERE r.starting_grid_position = 1
+GROUP BY e.season
+ORDER BY e.season;
