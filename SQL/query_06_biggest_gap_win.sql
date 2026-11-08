@@ -19,5 +19,5 @@ JOIN gold.dimevent e ON r.event_key = e.event_key
 JOIN gold.dimdriver d ON r.driver_key = d.driver_key
 JOIN gold.dimteam t ON r.team_key = t.team_key
 JOIN pole_times pt ON r.event_key = pt.event_key
-WHERE r.finishing_position = 1 -- Otsime ainult võitjaid
+WHERE r.finishing_position = 1 
 ORDER BY qual_time_gap_seconds DESC NULLS LAST;
