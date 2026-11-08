@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: stg_openf1__laps
+    description: "Silver layer cleaned and typed lap timing data from the OpenF1 API. Contains lap times, sector durations, and pit status flags."
+    columns:
+      - name: lap_id
+        description: "Surrogate key for the individual lap record."
+        tests:
+          - unique
+          - not_null
+
+      - name: session_key
+        description: "Unique identifier for the OpenF1 session."
+        tests:
+          - not_null
+
+      - name: driver_number
+        description: "Permanent stardust/car number assigned to the driver."
+        tests:
+          - not_null
+
+      - name: lap_number
+        description: "Sequential lap number completed by the driver in the session."
+        tests:
+          - not_null
+
+      - name: lap_duration_seconds
+        description: "Total lap duration in fractional seconds."
+
+      - name: is_pit_out_lap
+        description: "Boolean flag indicating whether the lap originated from the pit lane."
+        tests:
+          - not_null
+
+  - name: stg_openf1__session_results
+    description: "Silver layer cleaned session results, official starting grid positions, and championship points."
+    columns:
+      - name: result_id
+        description: "Surrogate key for the driver session result record."
+        tests:
+          - unique
+          - not_null
+
+      - name: session_key
+        description: "Unique identifier for the OpenF1 session."
+        tests:
+          - not_null
+
+      - name: driver_number
+        description: "Driver racing number."
+        tests:
+          - not_null
+
+      - name: position
+        description: "Official finishing rank in the qualifying session or race."
+
+      - name: grid_position
+        description: "Official starting grid position for the main race."
