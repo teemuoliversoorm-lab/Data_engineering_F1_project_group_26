@@ -1,84 +1,182 @@
 version: 2
+
 models:
+  # ----------------------------------------------------
+  # DIMENSION TABLES
+  # ----------------------------------------------------
   - name: dimdriver
-    description: "Driver identity, Type 1; latest observed source attributes."
+    description: "Driver dimension table (DimDriver). Holds driver identifiers, codes, numbers, and full names."
     columns:
-      - name: driverkey
-        description: "Deterministic key derived from source identifiers."
-        tests: [unique, not_null]
+      - name: driver_key
+        description: "Deterministic text surrogate key for the driver (e.g., 'NOR_4')."
+        tests:
+          - unique
+          - not_null
+
+      - name: driver_number
+        description: "Driver car number."
+        tests:
+          - not_null
+
+      - name: driver_code
+        description: "Three-letter driver acronym (e.g., 'NOR', 'VER')."
+
+      - name: full_name
+        description: "Full name of the Formula 1 driver."
+        tests:
+          - not_null
+
   - name: dimteam
-    description: "Constructor identity, Type 1."
+    description: "Constructor/team dimension table (DimTeam)."
     columns:
-      - name: teamkey
-        description: "Deterministic key derived from source identifiers."
-        tests: [unique, not_null]
+      - name: team_key
+        description: "Deterministic text surrogate key for the constructor team."
+        tests:
+          - unique
+          - not_null
+
+      - name: team_name
+        description: "Official team/constructor name (e.g., 'McLaren', 'Red Bull Racing')."
+        tests:
+          - not_null
+
   - name: dimevent
-    description: "One season and championship round, Type 1."
+    description: "Event and session dimension table (DimEvent)."
     columns:
-      - name: eventkey
-        description: "Deterministic key derived from source identifiers."
-        tests: [unique, not_null]
+      - name: event_key
+        description: "Deterministic text surrogate key for the event session (e.g., '2025_01_R')."
+        tests:
+          - unique
+          - not_null
+
+      - name: season
+        description: "Formula 1 championship season year (e.g., 2025, 2026)."
+        tests:
+          - not_null
+
+      - name: round_number
+        description: "Official calendar round number of the Grand Prix (1..24)."
+        tests:
+          - not_null
+
+      - name: session_type
+        description: "Session classification type: 'Q' for Qualifying, 'R' for Race."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Q', 'R']
+
+      - name: circuit_name
+        description: "Official name of the circuit."
+
   - name: dimdriverteamassignment
-    description: "Type 2 observed driver-team history, with half-open date intervals."
+    description: "Historical driver-team assignment dimension (SCD Type 2 model)."
     columns:
-      - name: driverteamassignmentkey
-        description: "Deterministic key derived from source identifiers."
-        tests: [unique, not_null]
-      - name: driverkey
+      - name: assignment_key
+        description: "Unique surrogate key for a driver-team assignment period."
+        tests:
+          - unique
+          - not_null
+
+      - name: driver_key
+        description: "Foreign key referencing DimDriver."
         tests:
           - not_null
           - relationships:
               to: ref('dimdriver')
-              field: driverkey
-      - name: teamkey
+              field: driver_key
+
+      - name: team_key
+        description: "Foreign key referencing DimTeam."
         tests:
           - not_null
           - relationships:
               to: ref('dimteam')
-              field: teamkey
+              field: team_key
+
+  # ----------------------------------------------------
+  # FACT TABLES
+  # ----------------------------------------------------
   - name: factlap
-    description: "Grain: one event, session, driver and lap."
+    description: "Granular lap-level fact table (FactLap). Grain: 1 row per lap, driver, and session."
     columns:
-      - name: driverkey
+      - name: fact_lap_key
+        description: "Surrogate primary key for the lap fact record."
         tests:
+          - unique
           - not_null
-          - relationships:
-              to: ref('dimdriver')
-              field: driverkey
-      - name: teamkey
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dimteam')
-              field: teamkey
-      - name: eventkey
+
+      - name: event_key
+        description: "Foreign key referencing DimEvent."
         tests:
           - not_null
           - relationships:
               to: ref('dimevent')
-              field: eventkey
+              field: event_key
+
+      - name: driver_key
+        description: "Foreign key referencing DimDriver."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimdriver')
+              field: driver_key
+
+      - name: lap_number
+        description: "Lap index within the session."
+        tests:
+          - not_null
+
+      - name: lap_duration_seconds
+        description: "Lap completion duration in seconds."
+
+      - name: position_at_lap_end
+        description: "Approximate race position recorded at lap completion."
+
   - name: factdrivereventresult
-    description: "Grain: one main-race event and driver; qualifying is joined separately."
+    description: "Main race event driver summary fact table (FactDriverEventResult). Grain: 1 row per driver per main race event."
     columns:
-      - name: driverkey
+      - name: fact_result_key
+        description: "Surrogate primary key for the race result record."
         tests:
+          - unique
           - not_null
-          - relationships:
-              to: ref('dimdriver')
-              field: driverkey
-      - name: teamkey
-        tests:
-          - not_null
-          - relationships:
-              to: ref('dimteam')
-              field: teamkey
-      - name: eventkey
+
+      - name: event_key
+        description: "Foreign key referencing DimEvent."
         tests:
           - not_null
           - relationships:
               to: ref('dimevent')
-              field: eventkey
-      - name: classificationavailable
-        description: "True when the race participant has an actual OpenF1 classification; false retains observed participation with unknown result metrics."
-      - name: qualifyingclassificationavailable
-        description: "Availability of the joined qualifying classification; null means no matching qualifying participant."
+              field: event_key
+
+      - name: driver_key
+        description: "Foreign key referencing DimDriver."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimdriver')
+              field: driver_key
+
+      - name: team_key
+        description: "Foreign key referencing DimTeam."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dimteam')
+              field: team_key
+
+      - name: grid_position
+        description: "Qualifying classification or penalty-adjusted starting grid position."
+
+      - name: final_position
+        description: "Official finishing rank in the main race."
+
+      - name: position_change_delta
+        description: "Net positions gained or lost (grid_position - final_position)."
+
+      - name: quali_gap_to_pole_seconds
+        description: "Difference in seconds between driver's best qualifying time and P1 pole time."
+
+      - name: points_scored
+        description: "Championship points earned in the race."
