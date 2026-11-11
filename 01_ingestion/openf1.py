@@ -168,12 +168,15 @@ def _adapt_result(number, row, driver, session_type, classification_available, g
 
     # OpenF1 flags dnf/dns/dsq as separate booleans and can still leave
     # `position` as a plain null for them (e.g. a post-race disqualification),
-    # not a string code -- check the flags first so that case isn't lost.
+    # not a string code -- check the flags first so that case isn't lost. A
+    # real numeric position always means Finished, even if the flags are
+    # absent (e.g. an older/incomplete response).
+    position = row.get("position")
     status = ("Disqualified" if row.get("dsq") else "Did not start" if row.get("dns")
               else "Did not finish" if row.get("dnf")
-              else "Finished" if row.get("dnf") is False and row.get("dns") is False
+              else "Finished" if position is not None or (row.get("dnf") is False and row.get("dns") is False)
               else None)
-    position, status_code = row.get("position"), None
+    status_code = None
     if isinstance(position, str):
         status_code = position.strip().upper()
         status = STATUS_CODES.get(status_code, "Unknown")

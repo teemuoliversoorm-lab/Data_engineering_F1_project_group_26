@@ -12,6 +12,7 @@ How raw OpenF1 fields become the warehouse's field names (see
 | `LapTime`, `Q1`/`Q2`/`Q3` | seconds converted to an ISO-8601 duration, e.g. `92.5` → `PT92.5S` |
 | `GridPosition` | `starting_grid.position`; null if no grid row exists |
 | `Position` (session result) | numeric `session_result.position`, or null with `PositionStatusCode` set for a textual code (`DNF`, `DSQ`, ...) |
+| `Status` | `session_result.dsq`/`dns`/`dnf` booleans first (`Disqualified`/`Did not start`/`Did not finish`); a numeric `Position` otherwise means `Finished`. OpenF1 can give `position: null` for a DSQ/DNF/DNS *instead of* a string code, so the boolean flags must be checked, not just `Position`. |
 | `ClassificationAvailable` | `true` if the driver has an actual `session_result` row; `false` if they only appear in `laps` (e.g. retired before classification) |
 | `Position` (lap) | **approximate** — see below |
 
@@ -41,6 +42,12 @@ How raw OpenF1 fields become the warehouse's field names (see
   gold compares `coalesce(Q3, Q2, Q1)` for both drivers; if one reached Q3 and
   the other was eliminated in Q1, the gap reflects different track conditions.
   `SameStageComparison` in `factdrivereventresult` flags this.
+- **A tiny number of classified finishers have no numeric position at all**
+  (`Status: Finished`, `Position: null`) — OpenF1 itself never published one
+  for them (e.g. Albon at the 2026 Barcelona GP, Stroll at the 2026 Australian
+  GP, both very recent races at the time of writing). Not fixable on our side;
+  `FinishPosition` stays null for these rows and `ResultStatus` still records
+  that they finished.
 - **The weekly DAG never re-fetches a session already in bronze.**
   `plan_sessions` skips any `(season, round, session_type)` already present,
   so a scheduled run only costs API calls for genuinely new rounds. This

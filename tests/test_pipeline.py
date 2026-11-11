@@ -79,6 +79,21 @@ class OpenF1AdaptTests(unittest.TestCase):
         self.assertEqual(lap["LapTime"], "PT90.5S")
         self.assertIsNone(lap["Position"])  # no position samples supplied
 
+    def test_adapt_uses_dsq_dnf_dns_flags_when_position_is_null(self):
+        """Regression test: OpenF1 can report dsq=true with position=null (a
+        post-race disqualification, e.g. Leclerc/Hamilton at the 2025 Chinese
+        GP) rather than a string status code. Status must still be set."""
+        drivers = [{"driver_number": 16, "full_name": "Charles Leclerc",
+                   "name_acronym": "LEC", "team_name": "Ferrari", "country_code": None}]
+        raw_results = [{"driver_number": 16, "position": None, "points": 0.0,
+                        "dnf": False, "dns": False, "dsq": True}]
+
+        datasets = adapt("R", raw_laps=[], raw_results=raw_results, drivers=drivers, grid=[], positions=[])
+
+        result = datasets["session_results"][0]
+        self.assertEqual(result["Status"], "Disqualified")
+        self.assertIsNone(result["Position"])
+
 
 @unittest.skipUnless(os.environ.get("F1_TEST_POSTGRES") == "1", "Set F1_TEST_POSTGRES=1 for PostgreSQL tests")
 class IdempotencyTests(unittest.TestCase):
