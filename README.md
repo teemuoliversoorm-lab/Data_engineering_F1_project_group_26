@@ -351,6 +351,47 @@ credentials), database `f1_warehouse`, user/password from `.env`'s
 
 ---
 
+## Stopping / exiting the project
+
+Three options, from least to most destructive:
+
+| Command | Containers | Named volumes (bronze/silver/gold data, Airflow metadata) | Built images |
+|---|---|---|---|
+| `docker compose stop` | Stopped, not removed | Kept | Kept |
+| `docker compose down` | Removed | Kept | Kept |
+| `docker compose down -v` | Removed | **Deleted** | Kept |
+| `docker compose down --rmi all -v` | Removed | **Deleted** | **Deleted** |
+
+- **`docker compose stop`** — pauses the containers (`warehouse`, `airflow-db`,
+  `airflow-scheduler`, `airflow-webserver`) without removing anything. Fastest
+  to resume: `docker compose start` brings them back exactly as they were,
+  with all your loaded data intact. Good for "I'm done for today, back
+  tomorrow."
+- **`docker compose down`** — stops and removes the containers themselves
+  (and the network), but the named volumes (`warehouse-data`, `airflow-db-data`,
+  `airflow-logs`) are untouched, since volumes are a separate resource from
+  containers in Docker. Next `docker compose up -d` recreates fresh containers
+  that reattach to the same volumes — all your bronze/silver/gold data and
+  Airflow history are still there. This is the default, safe way to shut down.
+- **`docker compose down -v`** — same as above, but also **deletes the named
+  volumes**, i.e. all loaded data: every row in bronze/silver/gold, and the
+  Airflow metadata database (DAG run history, users, connections). The next
+  `docker compose up -d` starts completely from scratch (empty warehouse,
+  `airflow-init` re-runs, you'd need to re-trigger the DAG and `dbt build`
+  again). This is what we used throughout this session to verify changes
+  against a genuinely clean first-time setup.
+- **`docker compose down --rmi all -v`** — everything above, plus deletes the
+  three built images (`...-warehouse`, `...-airflow`, `...-dbt`) too. The next
+  `docker compose --profile tools build` rebuilds them from the Dockerfiles
+  (a few minutes, mostly downloading base images from cache). Rarely needed —
+  only if you want to reclaim the disk space images use, or force a completely
+  clean rebuild.
+
+None of these touch your source code or `.env` file — those live on your
+filesystem, not in Docker.
+
+---
+
 ## LLM disclosure
 
 - 
