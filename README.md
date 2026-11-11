@@ -177,12 +177,25 @@ docker compose run --rm dbt build
 
 ## Idempotency
 
-`01_ingestion/load_bronze.py` loads one session batch by deleting any existing
-rows for that `(season, round, session_type)` and inserting the freshly
-extracted rows, in a single transaction. Running the same input again produces
-the same final row counts — no duplicates, no failure. This was verified with
-a real session loaded twice (928 laps / 20 results both times) and is covered
-by `tests/test_pipeline.py::IdempotencyTests`.
+Two separate layers, in order:
+
+1. **The DAG skips what's already loaded.** `plan_sessions` in
+   `00_dags/f1_ingestion.py` checks bronze first and only builds extract/check/load
+   tasks for `(season, round, session_type)` combinations that aren't there yet
+   (see [Run the pipeline](#run-the-pipeline)). So triggering the DAG normally
+   is a no-op for rounds you already have — nothing is re-extracted or re-loaded.
+2. **When a batch *is* loaded, it's a safe replace.** `01_ingestion/load_bronze.py`
+   loads one session batch by deleting any existing rows for that
+   `(season, round, session_type)` and inserting the freshly extracted rows, in
+   a single transaction. Running the same input again produces the same final
+   row counts — no duplicates, no failure. This was verified with a real
+   session loaded twice (928 laps / 20 results both times) and is covered by
+   `tests/test_pipeline.py::IdempotencyTests`.
+
+To force a genuine refresh of a round already in bronze (e.g. after an OpenF1
+correction), use the CLI directly — it skips layer 1 entirely and always
+re-extracts and re-loads: `ingestion.cli ingest --season ... --round ...
+--session ... --cutoff ...`.
 
 ---
 
@@ -202,10 +215,11 @@ docker compose run --rm dbt build
 ---
 
 ## Query results
+Run the business questions queries ([`03_queries/`]) against Gold while using Visual Studio Code Database (or other) extension or DBeaver or your preferred tool.
 
-Results below are from a real run on **6 November 2026**, covering the full
-2025 season (24 rounds) and every completed 2026 round through Mexico City
-(round 19 of 23; round 20, Brazil, is 8 November 2026 — not yet run). Two
+Results below are from a real run on **11 November 2026**, covering the full
+2025 season (24 rounds) and every completed 2026 round through Brazil
+(round 20 of 23). Two
 known OpenF1 gaps affect coverage: **Baku 2025 Qualifying** has no published
 lap data, so that one Q session (and its qualifying times) never loaded.
 
@@ -213,63 +227,95 @@ lap data, so that one Q session (and its qualifying times) never loaded.
 
 | races | pole wins | win % |
 |---|---|---|
-| 42 | 28 | 66.67 |
+| 43 | 29 | 67.44 |
 
-**Q2 — net position change by team** (2025+2026 combined — see note below):
+**Q2 — net position change by team** (2025+2026 combined):
 
 | team | net positions | | team | net positions |
 |---|---|---|---|---|
-| Haas F1 Team | +186 | | Audi | +39 |
-| Williams | +120 | | Alpine | +30 |
-| Aston Martin | +111 | | Racing Bulls | +15 |
-| Red Bull Racing | +105 | | Mercedes | +1 |
-| Kick Sauber | +83 | | McLaren | -10 |
-| Cadillac | +59 | | Ferrari | +56 |
+| Haas F1 Team | +166 | | Cadillac | +63 |
+| Red Bull Racing | +126 | | Audi | +36 |
+| Aston Martin | +107 | | Alpine | +31 |
+| Williams | +107 | | Racing Bulls | +18 |
+| Kick Sauber | +83 | | Mercedes | +1 |
+| Ferrari | +73 | | McLaren | -6 |
 
-**Q3 — net position change by driver** (top 5 / bottom 2 of 25):
+**Q3 — net position change by driver** (all drivers, 2025+2026 combined):
 
-| driver | net positions |
-|---|---|
-| Nico Hülkenberg | +93 |
-| Oliver Bearman | +90 |
-| Esteban Ocon | +88 |
-| Alexander Albon | +84 |
-| Lance Stroll | +74 |
-| ... | ... |
-| Pierre Gasly | -12 |
-| George Russell | -20 |
+| driver | net positions | | driver | net positions |
+|---|---|---|---|---|
+| Esteban Ocon | +88 | | Carlos Sainz | +29 |
+| Nico Hülkenberg | +87 | | Yuki Tsunoda | +21 |
+| Oliver Bearman | +79 | | Kimi Antonelli | +18 |
+| Alexander Albon | +78 | | Valtteri Bottas | +14 |
+| Lance Stroll | +74 | | Ryo Hirakawa | +8 |
+| Lewis Hamilton | +66 | | Charles Leclerc | +7 |
+| Sergio Perez | +49 | | Jack Doohan | +6 |
+| Liam Lawson | +46 | | Lando Norris | +1 |
+| Max Verstappen | +46 | | Isack Hadjar | -4 |
+| Franco Colapinto | +36 | | Oscar Piastri | -7 |
+| Arvid Lindblad | +35 | | Rafael Camara | -9 |
+| Fernando Alonso | +33 | | Pierre Gasly | -11 |
+| Gabriel Bortoleto | +32 | | George Russell | -17 |
 
-**Q4 — pole sitter leading after lap 1** (31 of 42 races; full list in
-[`03_queries/query_04_lap1_leader.sql`](03_queries/query_04_lap1_leader.sql) output):
-Lando Norris and Max Verstappen lead this list with 6 and 5 races respectively.
+**Q4 — pole sitter leading after lap 1** (31 of 43 races; 2025 left, 2026 right):
 
-**Q5 — teammate qualifying/race gap:** 897 driver-event rows (one per
+| season | event | driver | | season | event | driver |
+|---|---|---|---|---|---|---|
+| 2025 | Abu Dhabi Grand Prix | Max Verstappen | | 2026 | Austrian Grand Prix | George Russell |
+| 2025 | Australian Grand Prix | Lando Norris | | 2026 | Azerbaijan Grand Prix | George Russell |
+| 2025 | Austrian Grand Prix | Lando Norris | | 2026 | Bahrain Grand Prix | Max Verstappen |
+| 2025 | Bahrain Grand Prix | Oscar Piastri | | 2026 | Barcelona Grand Prix | George Russell |
+| 2025 | Belgian Grand Prix | Lando Norris | | 2026 | Belgian Grand Prix | Kimi Antonelli |
+| 2025 | British Grand Prix | Max Verstappen | | 2026 | Dutch Grand Prix | Lando Norris |
+| 2025 | Canadian Grand Prix | George Russell | | 2026 | Italian Grand Prix | Pierre Gasly |
+| 2025 | Chinese Grand Prix | Oscar Piastri | | 2026 | Monaco Grand Prix | Kimi Antonelli |
+| 2025 | Dutch Grand Prix | Oscar Piastri | | 2026 | Singapore Grand Prix | Max Verstappen |
+| 2025 | Hungarian Grand Prix | Charles Leclerc | | 2026 | Spanish Grand Prix | Lando Norris |
+| 2025 | Italian Grand Prix | Max Verstappen | | 2026 | United States Grand Prix | Kimi Antonelli |
+| 2025 | Japanese Grand Prix | Max Verstappen | | | | |
+| 2025 | Mexico City Grand Prix | Lando Norris | | | | |
+| 2025 | Monaco Grand Prix | Lando Norris | | | | |
+| 2025 | Qatar Grand Prix | Oscar Piastri | | | | |
+| 2025 | São Paulo Grand Prix | Lando Norris | | | | |
+| 2025 | Saudi Arabian Grand Prix | Max Verstappen | | | | |
+| 2025 | Singapore Grand Prix | George Russell | | | | |
+| 2025 | Spanish Grand Prix | Oscar Piastri | | | | |
+| 2025 | United States Grand Prix | Max Verstappen | | | | |
+
+**Q5 — teammate qualifying/race gap:** 919 driver-event rows (one per
 driver/team/event, both seasons); see
 [`03_queries/query_05_teammate_comparison.sql`](03_queries/query_05_teammate_comparison.sql)
-for the full table. `query_05` doesn't label rows by season either — the same
-cross-season limitation as Q2/Q3/Q4 below.
+for the full table. First rows of the output (2025 Abu Dhabi Grand Prix):
 
-**Q6 — largest qualifying gap to pole among race winners:**
+| season | event | team | driver | qualifying pos | finish pos | gap to pole (s) |
+|---|---|---|---|---|---|---|
+| 2025 | Abu Dhabi Grand Prix | Alpine | Pierre Gasly | 19 | 19 | 1.261 |
+| 2025 | Abu Dhabi Grand Prix | Alpine | Franco Colapinto | 20 | 20 | 1.683 |
+| 2025 | Abu Dhabi Grand Prix | Aston Martin | Lance Stroll | 15 | 10 | 0.890 |
+| 2025 | Abu Dhabi Grand Prix | Aston Martin | Fernando Alonso | 6 | 6 | 0.695 |
+| 2025 | Abu Dhabi Grand Prix | Ferrari | Lewis Hamilton | 16 | 8 | 1.187 |
+| 2025 | Abu Dhabi Grand Prix | Ferrari | Charles Leclerc | 5 | 4 | 0.523 |
+| 2025 | Abu Dhabi Grand Prix | Haas F1 Team | Esteban Ocon | 8 | 7 | 0.706 |
+| 2025 | Abu Dhabi Grand Prix | Haas F1 Team | Oliver Bearman | 11 | 12 | 0.834 |
+| 2025 | Abu Dhabi Grand Prix | Kick Sauber | Nico Hülkenberg | 18 | 9 | 1.243 |
+| 2025 | Abu Dhabi Grand Prix | Kick Sauber | Gabriel Bortoleto | 7 | 11 | 0.697 |
+
+**Q6 — largest qualifying gap to pole among race winners** (first 5):
 
 | event | season | driver | qualifying position | gap to pole (s) |
 |---|---|---|---|---|
 | Las Vegas Grand Prix | 2025 | Max Verstappen | 2 | 0.323 |
+| Italian Grand Prix | 2026 | Kimi Antonelli | 7 | 0.307 |
+| Qatar Grand Prix | 2025 | Max Verstappen | 3 | 0.264 |
+| Mexico City Grand Prix | 2026 | Max Verstappen | 4 | 0.178 |
+| British Grand Prix | 2026 | Charles Leclerc | 2 | 0.175 |
 
 This answer was wrong before a fix found during this round of testing: the one
 race with an unknown qualifying gap (Baku 2025, see above) was being picked as
 the "largest" gap, because PostgreSQL sorts `NULL` as larger than any value in
 `ORDER BY ... DESC`. Fixed in `03_queries/query_06_biggest_gap_win.sql` by
 excluding rows with no known gap.
-
-**Known limitations in these results** (business-rule refinement, not yet
-done — see `Reports/Report.pdf` for the full writeup):
-- Q2, Q3 and Q5 combine 2025 and 2026 into one set of numbers rather than
-  reporting per season.
-- Q4 reports only races where the pole sitter *did* lead lap 1, not a
-  per-season rate with an explicit denominator.
-
-Full output for all 6 queries, plus Airflow DAG graph and dbt dependency
-screenshots, are in `Reports/Report.pdf`.
 
 ---
 
