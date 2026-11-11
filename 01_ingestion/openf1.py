@@ -166,13 +166,18 @@ def _adapt_result(number, row, driver, session_type, classification_available, g
     duration = row.get("duration") if session_type == "Q" else None
     q1, q2, q3 = (to_duration(value) for value in (duration or [None, None, None]))
 
-    position, status, status_code = row.get("position"), None, None
+    # OpenF1 flags dnf/dns/dsq as separate booleans and can still leave
+    # `position` as a plain null for them (e.g. a post-race disqualification),
+    # not a string code -- check the flags first so that case isn't lost.
+    status = ("Disqualified" if row.get("dsq") else "Did not start" if row.get("dns")
+              else "Did not finish" if row.get("dnf")
+              else "Finished" if row.get("dnf") is False and row.get("dns") is False
+              else None)
+    position, status_code = row.get("position"), None
     if isinstance(position, str):
         status_code = position.strip().upper()
         status = STATUS_CODES.get(status_code, "Unknown")
         position = None
-    elif position is not None:
-        status = "Finished"
 
     return {
         "DriverNumber": str(number),
