@@ -76,8 +76,13 @@ def f1_ingestion():
 
     @task_group(group_id="ingest_session")
     def ingest_session(parameters):
-        @task(execution_timeout=timedelta(minutes=15))
+        @task(max_active_tis_per_dag=1, execution_timeout=timedelta(minutes=15))
         def extract(parameters):
+            # Serialized across all mapped instances: each extract spins up its
+            # own OpenF1Client with its own independent request-rate throttle,
+            # so running several concurrently would still blow past OpenF1's
+            # actual rate limit (observed: 429 Too Many Requests) even though
+            # each individual client self-throttles to one request per ~2.2s.
             from ingestion.extract import extract_session
             return extract_session(**parameters)
 

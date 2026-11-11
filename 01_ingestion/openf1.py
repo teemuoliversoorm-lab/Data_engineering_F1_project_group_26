@@ -57,10 +57,13 @@ def identity(value, label):
 
 class OpenF1Client:
     """Minimal GET client: one politeness delay between requests, a few
-    retries on transient errors. No cross-process locking -- a single
-    Airflow task at a time is enough at this project's scale."""
+    retries on transient errors. Each instance only throttles its own
+    requests -- it does NOT coordinate with other processes. OpenF1's actual
+    rate limit is enforced across all callers, so the DAG serializes every
+    extract task instance (`max_active_tis_per_dag=1` in 00_dags/f1_ingestion.py)
+    to keep requests from different mapped tasks from overlapping."""
 
-    def __init__(self, interval=REQUEST_INTERVAL, timeout=30, retries=3):
+    def __init__(self, interval=REQUEST_INTERVAL, timeout=30, retries=4):
         self.interval = interval
         self.timeout = timeout
         self.retries = retries
@@ -77,6 +80,14 @@ class OpenF1Client:
                 # not an empty JSON array -- treat it the same as [] here.
                 if response.status_code == 404 and allow_empty:
                     return []
+                if response.status_code == 429:
+                    # Too Many Requests: back off for as long as OpenF1 asks
+                    # (falling back to an escalating wait if it doesn't say),
+                    # rather than the short generic retry backoff below.
+                    wait = response.headers.get("Retry-After")
+                    time.sleep(min(float(wait), 60) if wait else 2 ** (attempt + 2))
+                    error = requests.exceptions.HTTPError(f"429 Too Many Requests: {url}")
+                    continue
                 response.raise_for_status()
                 rows = response.json()
                 break
