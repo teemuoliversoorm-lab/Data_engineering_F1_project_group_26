@@ -16,6 +16,15 @@ from airflow.decorators import dag, task, task_group
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 
+# Sessions confirmed permanently unavailable from OpenF1 (not a transient
+# outage -- the laps endpoint 404s for these every time, so extraction can
+# never succeed and the session can never reach bronze to be auto-skipped).
+# See docs/data_model.md. Without this, the weekly DAG would retry and fail
+# on these forever.
+KNOWN_PERMANENT_GAPS = {
+    (2025, 17, "Q"),  # Baku 2025 Qualifying: OpenF1 has no published lap data
+}
+
 
 @dag(
     dag_id="f1_ingestion",
@@ -68,8 +77,9 @@ def f1_ingestion():
                 if date.fromisoformat(race["date_start"][:10]) >= cutoff_date:
                     continue  # race weekend hasn't happened yet
                 for session_type in config["sessions"]:
-                    if (config["season"], round_number, session_type) in loaded:
-                        continue  # already loaded
+                    key = (config["season"], round_number, session_type)
+                    if key in loaded or key in KNOWN_PERMANENT_GAPS:
+                        continue
                     batches.append({"season": config["season"], "round_number": round_number,
                                     "session_type": session_type, "cutoff": cutoff})
         return batches
