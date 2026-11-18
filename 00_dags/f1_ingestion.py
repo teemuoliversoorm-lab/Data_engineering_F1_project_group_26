@@ -1,4 +1,5 @@
-"""Project 2 sections 2.1/2.2: parameterized OpenF1 -> PostgreSQL bronze.
+"""Project 2 sections 2.1/2.2/2.4: parameterized OpenF1 -> PostgreSQL bronze,
+then dbt build -> silver/gold, in one DAG.
 
 Fully automatic by default: plan_sessions discovers every completed round for
 each configured season from OpenF1's own calendar and skips anything already
@@ -6,15 +7,19 @@ in bronze, so a weekly run only fetches genuinely new rounds instead of
 re-downloading the whole season each time. One task group per (round,
 session) pair: extract -> check -> load. Mapping per session means one failed
 extraction doesn't block any other session's load (see ingest_session.expand
-below).
+below). After all sessions are attempted, build_warehouse runs `dbt build`
+(as a sibling container -- see README "dbt automation") to refresh silver and
+gold from whatever is now in bronze, even if some sessions failed.
 """
 
+import os
 from datetime import date, timedelta
 
 import pendulum
 from airflow.decorators import dag, task, task_group
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
+from airflow.providers.docker.operators.docker import DockerOperator
 
 # Sessions confirmed permanently unavailable from OpenF1 (not a transient
 # outage -- the laps endpoint 404s for these every time, so extraction can
@@ -110,7 +115,35 @@ def f1_ingestion():
 
         load(check(extract(parameters)))
 
-    ingest_session.expand(parameters=plan_sessions())
+    build_warehouse = DockerOperator(
+        task_id="build_warehouse",
+        image=os.environ["DBT_IMAGE"],
+        command=["build"],
+        api_version="auto",
+        auto_remove="success",
+        docker_url="unix://var/run/docker.sock",
+        network_mode=os.environ["COMPOSE_NETWORK"],
+        mount_tmp_dir=False,
+        # Same environment as the `dbt` service in compose.yaml -- this
+        # container is the same image, just launched by Airflow instead of
+        # `docker compose run --rm dbt build`.
+        environment={
+            "PGHOST": "warehouse",
+            "PGPORT": "5432",
+            "PGDATABASE": os.environ["PGDATABASE"],
+            "PGUSER": os.environ["PGUSER"],
+            "PGPASSWORD": os.environ["PGPASSWORD"],
+            "DBT_PROFILES_DIR": "/project/dbt",
+            "DBT_TARGET_PATH": "/tmp/dbt-target",
+            "DBT_LOG_PATH": "/tmp/dbt-logs",
+        },
+        # Rebuild gold from whatever made it into bronze even if some
+        # sessions failed (e.g. a transient OpenF1 outage on one session
+        # shouldn't block the rest of the data from reaching gold).
+        trigger_rule="all_done",
+    )
+
+    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse
 
 
 f1_ingestion()

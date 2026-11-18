@@ -67,7 +67,7 @@ at a glance:
       v
   bronze    PostgreSQL, raw JSONB, one row per driver/lap or driver/session
       |
-      v
+      v  build_warehouse (same DAG, runs after all sessions are attempted)
   02_dbt/   silver (typed views) -> gold (star schema: 2 facts, 4 dims)
       |
       v
@@ -83,8 +83,11 @@ at a glance:
    a handful of dimensions (driver/team/event) at season scale — no need for a
    columnar or distributed engine, and it's what dbt and Airflow both integrate
    with cleanly. Bronze/silver/gold are separate schemas in the same database.
-4. **Transformation:** dbt builds silver (typed, cleaned views) and gold (the
-   Project 1 star schema: 2 fact tables, 4 dimensions) from bronze.
+4. **Transformation:** the same DAG's final task, `build_warehouse`, runs
+   `dbt build` automatically after every session is attempted (see
+   [dbt automation](#dbt-automation)) — no manual step needed. It builds silver
+   (typed, cleaned views) and gold (the Project 1 star schema: 2 fact tables,
+   4 dimensions) from bronze.
 5. **Serving:** the 6 business questions are plain SQL against gold (see
    [`03_queries/`](03_queries)). Dashboards are out of scope for this submission.
 
@@ -167,11 +170,42 @@ Each `(round, session)` pair is extracted, data-quality checked, and loaded
 independently — one failing session doesn't block the others. Re-running the
 same configuration is safe (see [Idempotency](#idempotency)).
 
-**Build the warehouse (dbt):**
+After every session is attempted, the same DAG run automatically builds the
+warehouse (`build_warehouse` task runs `dbt build`) — see
+[dbt automation](#dbt-automation) below. You don't need to run dbt separately
+unless you want to rebuild gold on demand without waiting for/triggering the
+DAG:
 
 ```sh
 docker compose run --rm dbt build
 ```
+
+---
+
+## dbt automation
+
+`00_dags/f1_ingestion.py`'s last task, `build_warehouse`, runs `dbt build`
+automatically — bronze → gold is a single DAG, with zero manual steps.
+
+It works by having Airflow launch the existing `dbt` image as a **sibling
+container** (`DockerOperator`), exactly as if you'd typed
+`docker compose run --rm dbt build` yourself, just triggered by the DAG
+instead of your terminal. It uses `trigger_rule="all_done"`, so it runs (and
+rebuilds gold from whatever did land in bronze) even if some sessions failed
+— a transient OpenF1 outage on one session shouldn't block the rest of the
+data from reaching gold.
+
+This requires the Airflow containers to reach the host's Docker daemon
+("Docker-outside-of-Docker"): `compose.yaml` mounts `/var/run/docker.sock`
+into them, and `DBT_IMAGE`/`COMPOSE_NETWORK` env vars tell the task which
+image to launch and which compose network to join (so it can resolve the
+`warehouse` hostname). Granting socket access gives any task full control
+over the host's Docker — a real consideration on a shared/production host,
+but a non-issue for this local, single-user project.
+
+If you ever need to bypass this (e.g. a host where mounting the Docker socket
+isn't possible), `docker compose run --rm dbt build` still works exactly as
+before — the automation is additive, not a replacement for manual runs.
 
 ---
 
@@ -325,7 +359,8 @@ excluding rows with no known gap.
 leftover half-initialized volume from an interrupted first start. Fix with
 `docker compose down` then `docker volume rm data_engineering_f1_project_group_26_warehouse-data`
 and start again (this discards local warehouse data, which is rebuilt from
-scratch by re-running the DAG and `dbt build`).
+scratch by re-triggering the DAG — `build_warehouse` runs `dbt build`
+automatically at the end).
 
 **`OpenF1 request failed after 3 attempts`** — OpenF1 occasionally rate-limits
 or has brief outages; re-run the same command, extraction is safe to retry.
@@ -377,9 +412,9 @@ Three options, from least to most destructive:
   volumes**, i.e. all loaded data: every row in bronze/silver/gold, and the
   Airflow metadata database (DAG run history, users, connections). The next
   `docker compose up -d` starts completely from scratch (empty warehouse,
-  `airflow-init` re-runs, you'd need to re-trigger the DAG and `dbt build`
-  again). This is what we used throughout this session to verify changes
-  against a genuinely clean first-time setup.
+  `airflow-init` re-runs, you'd need to re-trigger the DAG again — it rebuilds
+  bronze and gold together). This is what we used throughout this session to
+  verify changes against a genuinely clean first-time setup.
 - **`docker compose down --rmi all -v`** — everything above, plus deletes the
   three built images (`...-warehouse`, `...-airflow`, `...-dbt`) too. The next
   `docker compose --profile tools build` rebuilds them from the Dockerfiles

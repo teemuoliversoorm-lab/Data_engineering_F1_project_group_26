@@ -16,8 +16,15 @@ x-airflow: &airflow
     PGUSER: ${POSTGRES_USER:-f1}
     PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     PYTHONPATH: /opt/airflow/project
+    # Used by the DAG's DockerOperator task to launch the dbt image as a
+    # sibling container on the same compose network -- see 00_dags/f1_ingestion.py.
+    DBT_IMAGE: ${COMPOSE_PROJECT_NAME:-data_engineering_f1_project_group_26}-dbt:latest
+    COMPOSE_NETWORK: ${COMPOSE_PROJECT_NAME:-data_engineering_f1_project_group_26}_default
   volumes:
     - airflow-logs:/opt/airflow/logs
+    # Docker-outside-of-Docker: lets Airflow tasks launch sibling containers
+    # (the dbt image) via the host's Docker daemon. See README "dbt automation".
+    - /var/run/docker.sock:/var/run/docker.sock
   depends_on:
     warehouse:
       condition: service_healthy
