@@ -47,6 +47,15 @@ How raw OpenF1 fields become the warehouse's field names (see
   the board. If codes are ever needed, pull them manually from a
   2024-or-earlier OpenF1 session (a driver's license nationality rarely
   changes), or backfill once OpenF1 restores the field upstream.
+- **`PositionStatusCode` is always null in our data.** It is meant to hold
+  OpenF1's raw classification code (`RT`, `DNF`, `DSQ`, ...) for cases where
+  `session_result.position` arrives as a string, but OpenF1 represents
+  non-finishers in 2025+ sessions with `dnf`/`dns`/`dsq` boolean flags and a
+  null or numeric `position` instead — so the column stays null throughout.
+  The outcome is still recorded in `Status`/`resultstatus`, derived from
+  those flags. Left in place deliberately: if OpenF1 resumes sending string
+  codes, `openf1.py`'s mapping will populate it again with no downstream
+  changes needed.
 - **Qualifying time comparisons can cross stages.** `QualifyingGapToPole` in
   gold compares `coalesce(Q3, Q2, Q1)` for both drivers; if one reached Q3 and
   the other was eliminated in Q1, the gap reflects different track conditions.
