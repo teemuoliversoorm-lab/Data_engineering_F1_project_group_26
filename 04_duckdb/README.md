@@ -1,11 +1,10 @@
-Käivitamine:
+Running:
 # docker build -t f1-duckdb .\04_duckdb
 # docker run --rm --env-file .env -v "${PWD}\04_duckdb\data:/data" f1-duckdb python compare_engines.py
 
-Fail jooksutab b) ja d) äriküsimustele vastavaid querisid ning väljastab võrdlustabeli PostgreSQL-i ja DuckDB vahel.
+This runs b) and d) business question queries (Q2 and Q4) and outputs a comparison table between PostreSQL and DuckDB. 
 
-Võimalik info raportisse:
-
+Info for the report:
 DuckDB was added as an optional analytical layer using a copy of the PostgreSQL Gold dimensional model. Refresh scripts replicate the Gold schema into native DuckDB tables, keeping DuckDB independent of the main pipeline.
 
 DuckDB's columnar storage suits our analytical queries, which involve fact-table scans, dimension joins, grouping and aggregation. This is particularly relevant to queries **b** (team net position changes) and **d** (pole-position drivers retaining the lead after lap 1).
