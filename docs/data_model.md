@@ -38,6 +38,15 @@ How raw OpenF1 fields become the warehouse's field names (see
   currently handled.
 - **`TrackStatus` is always null** — OpenF1 doesn't expose it on the `laps`
   endpoint used here.
+- **`CountryCode` is null for every 2025+ driver.** OpenF1's `/drivers`
+  endpoint stopped returning driver country codes from the 2025 season
+  onward — every driver row in 2025/2026 sessions comes back with
+  `"country_code": null` (verified against the live API; 2023/2024 sessions
+  still return codes like `NED`, `MON`, `THA`). Our bronze rows therefore
+  carry `CountryCode: null`, so `gold.dimdriver.countrycode` is null across
+  the board. If codes are ever needed, pull them manually from a
+  2024-or-earlier OpenF1 session (a driver's license nationality rarely
+  changes), or backfill once OpenF1 restores the field upstream.
 - **Qualifying time comparisons can cross stages.** `QualifyingGapToPole` in
   gold compares `coalesce(Q3, Q2, Q1)` for both drivers; if one reached Q3 and
   the other was eliminated in Q1, the gap reflects different track conditions.
