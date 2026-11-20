@@ -25,6 +25,13 @@ x-airflow: &airflow
     # Docker-outside-of-Docker: lets Airflow tasks launch sibling containers
     # (the dbt image) via the host's Docker daemon. See README "dbt automation".
     - /var/run/docker.sock:/var/run/docker.sock
+  # On native Linux, docker.sock is owned root:docker (mode 660) -- the
+  # container's process (uid AIRFLOW_UID, group root) needs to additionally
+  # belong to the host's "docker" group to read/write it. Docker Desktop
+  # (Windows/Mac) proxies the socket differently and usually doesn't need
+  # this, but it's harmless to set regardless -- see README "dbt automation".
+  group_add:
+    - "${DOCKER_GID:-999}"
   depends_on:
     warehouse:
       condition: service_healthy

@@ -384,6 +384,19 @@ airflow-webserver` — or simplest, `docker compose down -v` and start fresh.
 credentials), database `f1_warehouse`, user/password from `.env`'s
 `POSTGRES_USER`/`POSTGRES_PASSWORD`.
 
+**`build_warehouse` fails with `Docker socket access - Permission denied on
+/var/run/docker.sock`** — host-OS-dependent. On native Linux, the socket is
+owned `root:docker` (mode 660), and the Airflow containers need to belong to
+that same `docker` group to use it. Find your host's actual GID with:
+```sh
+getent group docker | cut -d: -f3
+```
+Set it as `DOCKER_GID` in your `.env`, then `docker compose up -d` to recreate
+the containers with that group membership. Docker Desktop (Windows/Mac)
+usually doesn't need this — the default `DOCKER_GID=999` in `.env.example` is
+harmless there either way (groups that don't match anything on the host are
+simply unused, not an error). See [dbt automation](#dbt-automation).
+
 ---
 
 ## Stopping / exiting the project
