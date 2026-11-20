@@ -385,17 +385,24 @@ credentials), database `f1_warehouse`, user/password from `.env`'s
 `POSTGRES_USER`/`POSTGRES_PASSWORD`.
 
 **`build_warehouse` fails with `Docker socket access - Permission denied on
-/var/run/docker.sock`** — host-OS-dependent. On native Linux, the socket is
-owned `root:docker` (mode 660), and the Airflow containers need to belong to
-that same `docker` group to use it. Find your host's actual GID with:
+/var/run/docker.sock`** — host-OS-dependent. The socket is bind-mounted from
+the host, and the Airflow containers need to belong to its actual group (GID)
+to use it. Don't rely on `getent group docker` on your host — it only exists
+on Linux, and the socket's GID as seen from inside the container is what
+actually matters anyway. Instead, check it directly through the already-running
+stack (works the same on Windows/Mac/Linux, since it queries the Linux
+container, not your host):
 ```sh
-getent group docker | cut -d: -f3
+docker compose up -d                                                  # bring the stack up (DOCKER_GID defaults to 999)
+docker compose exec airflow-scheduler stat -c %g /var/run/docker.sock # the socket's real GID
 ```
-Set it as `DOCKER_GID` in your `.env`, then `docker compose up -d` to recreate
-the containers with that group membership. Docker Desktop (Windows/Mac)
-usually doesn't need this — the default `DOCKER_GID=999` in `.env.example` is
-harmless there either way (groups that don't match anything on the host are
-simply unused, not an error). See [dbt automation](#dbt-automation).
+If that number isn't already `999`, set `DOCKER_GID=<that number>` in your
+`.env`, then `docker compose up -d` again to recreate the containers with
+that group membership. Verify with `docker compose exec airflow-scheduler id`
+— the printed `groups=` list should include it. Docker Desktop (Windows/Mac)
+commonly reports `0` (root), which the containers already belong to by
+default, so no change is usually needed there. See
+[dbt automation](#dbt-automation).
 
 ---
 
