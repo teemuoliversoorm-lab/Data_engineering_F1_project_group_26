@@ -4,14 +4,13 @@ Running:
 
 This runs b) and d) business question queries (Q2 and Q4) and outputs a comparison table between PostreSQL and DuckDB. 
 
-Info for the report:
-DuckDB was added as an optional analytical layer using a copy of the PostgreSQL Gold dimensional model. Refresh scripts replicate the Gold schema into native DuckDB tables, keeping DuckDB independent of the main pipeline.
+DuckDB was added as an optional analytical layer using a copy of the PostgreSQL Gold dimensional model. Refresh scripts replicate the Gold schema into native DuckDB tables, keeping DuckDB independent of the main pipeline. 
 
-DuckDB's columnar storage suits our analytical queries, which involve fact-table scans, dimension joins, grouping and aggregation. This is particularly relevant to queries **b** (team net position changes) and **d** (pole-position drivers retaining the lead after lap 1).
+DuckDB is used as an optional analytical copy of the PostgreSQL Gold layer. Its columnar storage is well suited to the read-heavy query patterns in this project, where queries scan fact-table columns, join them with relatively small dimensions, and perform grouping and aggregation. This fits queries such as b, which aggregates position changes by team, and d, which joins lap-level data with event, driver, and result data to identify whether the pole-position driver retained the lead after lap 1. 
 
-PostgreSQL remains the primary warehouse because it handles our small dataset, ingestion, dbt transformations and dimensional model effectively, and our team is familiar with it.
+PostgreSQL remains the primary warehouse because the dataset is small, the pipeline also performs ingestion and dbt-managed transformations there, and PostgreSQL provides a convenient relational store for the full Bronze–Silver–Gold workflow. DuckDB is therefore used mainly as a lightweight columnar analytical layer rather than as a replacement for PostgreSQL. In our measurements, PostgreSQL was slightly faster for the tested queries because the dataset is too small for DuckDB's columnar advantages to clearly outweigh per-query overhead. The comparison therefore demonstrates the architectural fit of DuckDB for analytical workloads rather than a general performance advantage over PostgreSQL. 
 
-To validate DuckDB, queries **b** and **d** were executed in both engines, producing identical results.
+To validate DuckDB, queries b and d were executed in both engines, producing identical results. Each query was run once for warm-up and five additional times per engine, with median execution times reported. PostgreSQL was faster for both queries, likely because the dataset is too small for DuckDB's columnar advantages to outweigh per-query overhead. These results should therefore not be treated as a general performance benchmark.  
 
 | Query | Same result? | PostgreSQL median (ms) | DuckDB median (ms) |
 |---|---|---|---|
