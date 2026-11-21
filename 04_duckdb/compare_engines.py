@@ -13,43 +13,33 @@ import csv
 POSTGRES_QUERIES = {
     "Q2 - team position change": """
         SELECT
-            e.season,
-            t.teamname,
-            SUM(f.placesgainedlost) AS net_positions
-        FROM gold.factdrivereventresult f
-        JOIN gold.dimteam t USING (teamkey)
-        JOIN gold.dimevent e USING (eventkey)
-        WHERE f.placesgainedlost IS NOT NULL
-        GROUP BY e.season, t.teamname
-        ORDER BY e.season, net_positions DESC, t.teamname;
+            t.TeamName,
+            SUM(r.PlacesGainedLost) AS net_positions
+        FROM gold.FactDriverEventResult r
+        JOIN gold.DimTeam t
+        ON r.TeamKey = t.TeamKey
+        GROUP BY t.TeamName
+        ORDER BY net_positions DESC, t.TeamName ASC;
     """,
 
     "Q4 - pole retained lead after lap 1": """
-        WITH pole_sitters AS (
-            SELECT
-                eventkey,
-                driverkey
-            FROM gold.factdrivereventresult
-            WHERE qualifyingposition = 1
-        )
         SELECT
-            e.season,
-            e.roundnumber,
-            e.eventname,
-            e.circuitname,
-            d.fullname AS pole_driver
-        FROM pole_sitters p
-        JOIN gold.factlap l
-            ON p.eventkey = l.eventkey
-           AND p.driverkey = l.driverkey
-        JOIN gold.dimevent e
-            ON p.eventkey = e.eventkey
-        JOIN gold.dimdriver d
-            ON p.driverkey = d.driverkey
-        WHERE l.sessiontype = 'Race'
-          AND l.lapnumber = 1
-          AND l.lapposition = 1
-        ORDER BY e.season, e.roundnumber;
+            e.Season,
+            e.EventName,
+            d.DriverId
+        FROM gold.FactLap l
+        JOIN gold.DimEvent e
+        ON l.EventKey = e.EventKey
+        JOIN gold.DimDriver d
+        ON l.DriverKey = d.DriverKey
+        JOIN gold.FactDriverEventResult r
+        ON l.EventKey = r.EventKey
+        AND l.DriverKey = r.DriverKey
+        WHERE r.QualifyingPosition = 1
+        AND l.LapNumber = 1
+        AND l.LapPosition = 1
+        AND l.SessionType = 'Race'
+        ORDER BY e.Season, e.EventName, d.DriverId;
     """
 }
 
@@ -57,43 +47,33 @@ POSTGRES_QUERIES = {
 DUCKDB_QUERIES = {
     "Q2 - team position change": """
         SELECT
-            e.season,
-            t.teamname,
-            SUM(f.placesgainedlost) AS net_positions
-        FROM factdrivereventresult f
-        JOIN dimteam t USING (teamkey)
-        JOIN dimevent e USING (eventkey)
-        WHERE f.placesgainedlost IS NOT NULL
-        GROUP BY e.season, t.teamname
-        ORDER BY e.season, net_positions DESC, t.teamname;
+            t.TeamName,
+            SUM(r.PlacesGainedLost) AS net_positions
+        FROM FactDriverEventResult r
+        JOIN DimTeam t
+        ON r.TeamKey = t.TeamKey
+        GROUP BY t.TeamName
+        ORDER BY net_positions DESC, t.TeamName ASC;
     """,
 
     "Q4 - pole retained lead after lap 1": """
-        WITH pole_sitters AS (
-            SELECT
-                eventkey,
-                driverkey
-            FROM factdrivereventresult
-            WHERE qualifyingposition = 1
-        )
         SELECT
-            e.season,
-            e.roundnumber,
-            e.eventname,
-            e.circuitname,
-            d.fullname AS pole_driver
-        FROM pole_sitters p
-        JOIN factlap l
-            ON p.eventkey = l.eventkey
-           AND p.driverkey = l.driverkey
-        JOIN dimevent e
-            ON p.eventkey = e.eventkey
-        JOIN dimdriver d
-            ON p.driverkey = d.driverkey
-        WHERE l.sessiontype = 'Race'
-          AND l.lapnumber = 1
-          AND l.lapposition = 1
-        ORDER BY e.season, e.roundnumber;
+            e.Season,
+            e.EventName,
+            d.DriverId
+        FROM FactLap l
+        JOIN DimEvent e
+        ON l.EventKey = e.EventKey
+        JOIN DimDriver d
+        ON l.DriverKey = d.DriverKey
+        JOIN FactDriverEventResult r
+        ON l.EventKey = r.EventKey
+        AND l.DriverKey = r.DriverKey
+        WHERE r.QualifyingPosition = 1
+        AND l.LapNumber = 1
+        AND l.LapPosition = 1
+        AND l.SessionType = 'Race'
+        ORDER BY e.Season, e.EventName, d.DriverId;
     """
 }
 
@@ -114,15 +94,18 @@ duck = duckdb.connect("/data/f1_analytics.duckdb")
 def postgres_query(sql):
     with pg.cursor() as cur:
         cur.execute(sql)
-        return cur.fetchall()
+        rows = cur.fetchall()
+        columns = [desc[0] for desc in cur.description]
+        return columns, rows
 
 
 def duckdb_query(sql):
-    return duck.execute(sql).fetchall()
-
+    result = duck.execute(sql)
+    columns = [desc[0] for desc in result.description]
+    rows = result.fetchall()
+    return columns, rows
 
 def normalise(rows):
-    """Make Decimal/float differences irrelevant when comparing results."""
     cleaned = []
 
     for row in rows:
@@ -136,8 +119,14 @@ def normalise(rows):
     return cleaned
 
 
+def canonicalise(rows):
+    return sorted(
+        normalise(rows),
+        key=lambda row: tuple(str(value) for value in row)
+    )
+
 def median_runtime(query_function, sql, repetitions=5):
-    # warm-up, so the data is already cached
+    # warm-up
     query_function(sql)
 
     timings = []
@@ -151,6 +140,26 @@ def median_runtime(query_function, sql, repetitions=5):
 
     return statistics.median(timings)
 
+def markdown_table(columns, rows):
+    lines = []
+
+    lines.append(
+        "| " + " | ".join(str(column) for column in columns) + " |"
+    )
+
+    lines.append(
+        "| " + " | ".join("---" for _ in columns) + " |"
+    )
+
+    for row in rows:
+        lines.append(
+            "| " + " | ".join(
+                "" if value is None else str(value)
+                for value in row
+            ) + " |"
+        )
+
+    return "\n".join(lines)
 
 def postgres_explain(sql):
     with pg.cursor() as cur:
@@ -177,16 +186,17 @@ def duckdb_explain(sql):
 # Comparison
 
 results = []
+query_outputs = {}
 
 for name in POSTGRES_QUERIES:
     pg_sql = POSTGRES_QUERIES[name]
     duck_sql = DUCKDB_QUERIES[name]
 
-    pg_result = postgres_query(pg_sql)
-    duck_result = duckdb_query(duck_sql)
+    pg_columns, pg_result = postgres_query(pg_sql)
+    duck_columns, duck_result = duckdb_query(duck_sql)
 
-    matches = normalise(pg_result) == normalise(duck_result)
-
+    matches = canonicalise(pg_result) == canonicalise(duck_result)
+    
     pg_median = median_runtime(postgres_query, pg_sql)
     duck_median = median_runtime(duckdb_query, duck_sql)
 
@@ -197,7 +207,14 @@ for name in POSTGRES_QUERIES:
     print("=" * 80)
 
     print(f"Results match: {matches}")
-    print(f"Rows returned: {len(pg_result)}")
+    print(f"PostgreSQL rows: {len(pg_result)}")
+    print(f"DuckDB rows: {len(duck_result)}")
+
+    print("\nPOSTGRESQL RESULT:")
+    print(markdown_table(pg_columns, pg_result))
+
+    print("\nDUCKDB RESULT:")
+    print(markdown_table(duck_columns, duck_result))
 
     print("\nPostgreSQL EXPLAIN ANALYZE:")
     print(f"Planning Time:  {pg_planning:.3f} ms")
@@ -217,6 +234,12 @@ for name in POSTGRES_QUERIES:
         )
     )
 
+    # Store actual results so we can export them later
+    query_outputs[name] = {
+        "columns": pg_columns,
+        "rows": pg_result,
+        "matches": matches,
+    }
 
 # -----------------------------
 # Markdown summary table
@@ -254,6 +277,38 @@ pg.close()
 
 output_dir = Path("/data/results")
 output_dir.mkdir(parents=True, exist_ok=True)
+
+# Save actual business-query results
+for name, output in query_outputs.items():
+
+    safe_name = (
+        name.lower()
+        .replace(" ", "_")
+        .replace("-", "")
+    )
+
+    columns = output["columns"]
+    rows = output["rows"]
+
+    # Markdown result
+    result_md = output_dir / f"{safe_name}_results.md"
+
+    with result_md.open("w", encoding="utf-8") as f:
+        f.write(f"# {name}\n\n")
+        f.write(
+            f"PostgreSQL and DuckDB results match: "
+            f"{'Yes' if output['matches'] else 'No'}\n\n"
+        )
+        f.write(markdown_table(columns, rows))
+        f.write("\n")
+
+    # CSV result
+    result_csv = output_dir / f"{safe_name}_results.csv"
+
+    with result_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(columns)
+        writer.writerows(rows)
 
 # Markdown
 md_path = output_dir / "comparison.md"
