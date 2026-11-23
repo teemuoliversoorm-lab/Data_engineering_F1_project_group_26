@@ -13,13 +13,14 @@ TABLES = [
     "factlap",
 ]
 
+password = os.getenv("PGPASSWORD") or os.getenv("POSTGRES_PASSWORD")
 
 pg = psycopg2.connect(
     host=os.getenv("PGHOST", "host.docker.internal"),
-    port=os.getenv("PGPORT", "5433"),
-    dbname=os.getenv("POSTGRES_DB", "f1_warehouse"),
-    user=os.getenv("POSTGRES_USER", "f1"),
-    password=os.environ["POSTGRES_PASSWORD"],
+    port=os.getenv("PGPORT", os.getenv("POSTGRES_PORT", "5433")),
+    dbname=os.getenv("PGDATABASE", os.getenv("POSTGRES_DB", "f1_warehouse")),
+    user=os.getenv("PGUSER", os.getenv("POSTGRES_USER", "f1")),
+    password=password,
 )
 
 duck = duckdb.connect("/data/f1_analytics.duckdb")

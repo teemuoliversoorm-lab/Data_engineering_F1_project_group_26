@@ -14,6 +14,7 @@ gold from whatever is now in bronze, even if some sessions failed.
 
 import os
 from datetime import date, timedelta
+from docker.types import Mount
 
 import pendulum
 from airflow.decorators import dag, task, task_group
@@ -143,7 +144,27 @@ def f1_ingestion():
         trigger_rule="all_done",
     )
 
-    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse
+    refresh_duckdb = DockerOperator(
+        task_id="refresh_duckdb",
+        image="f1-duckdb",
+        command=["python", "refresh_duckdb.py"],
+        api_version="auto",
+        auto_remove="success",
+        docker_url="unix://var/run/docker.sock",
+        network_mode=os.environ["COMPOSE_NETWORK"],
+        mount_tmp_dir=False,
+        environment={
+            "PGHOST": "warehouse",
+            "PGPORT": "5432",
+            "PGDATABASE": os.environ["PGDATABASE"],
+            "PGUSER": os.environ["PGUSER"],
+            "PGPASSWORD": os.environ["PGPASSWORD"],
+        },
+        mounts=[
+            Mount(source="f1-duckdb-data", target="/data", type="volume")
+        ],
+    )
 
+    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse >> refresh_duckdb
 
 f1_ingestion()

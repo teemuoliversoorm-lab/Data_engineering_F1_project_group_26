@@ -152,3 +152,5 @@ volumes:
   warehouse-data:
   airflow-db-data:
   airflow-logs:
+  duckdb-data:
+    name: f1-duckdb-data
