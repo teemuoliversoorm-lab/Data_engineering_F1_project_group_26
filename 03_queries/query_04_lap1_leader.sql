@@ -1,17 +1,23 @@
 SELECT
     e.Season,
     e.EventName,
-    d.DriverId
-FROM FactLap l
-JOIN DimEvent e
+    e.CircuitName,
+    d.DriverId,
+    COUNT(*) OVER (
+        PARTITION BY e.CircuitName
+    ) AS RetainedLeadCountAtCircuit
+FROM gold.FactLap l
+JOIN gold.DimEvent e
     ON l.EventKey = e.EventKey
-JOIN DimDriver d
+JOIN gold.DimDriver d
     ON l.DriverKey = d.DriverKey
-JOIN FactDriverEventResult r
+JOIN gold.FactDriverEventResult r
     ON l.EventKey = r.EventKey
    AND l.DriverKey = r.DriverKey
-WHERE r.QualifyingPosition = 1
+WHERE r.GridPosition = 1
   AND l.LapNumber = 1
   AND l.LapPosition = 1
   AND l.SessionType = 'Race'
-ORDER BY e.Season, e.EventName;
+ORDER BY
+    e.Season,
+    e.EventName;
