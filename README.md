@@ -263,77 +263,121 @@ lap data, so that one Q session (and its qualifying times) never loaded.
 |---|---|---|
 | 43 | 29 | 67.44 |
 
-**Q2 — net position change by team** (2025+2026 combined):
+**Q2 — net position change by team and season**:
 
-| team | net positions | | team | net positions |
-|---|---|---|---|---|
-| Haas F1 Team | +166 | | Cadillac | +63 |
-| Red Bull Racing | +126 | | Audi | +36 |
-| Aston Martin | +107 | | Alpine | +31 |
-| Williams | +107 | | Racing Bulls | +18 |
-| Kick Sauber | +83 | | Mercedes | +1 |
-| Ferrari | +73 | | McLaren | -6 |
+| 2025 Team | Net Positions |   | 2026 Team | Net Positions |
+|---|---:|---|---|---:|
+| Alpine | 5 |   | Alpine | 32 |
+| Aston Martin | 50 |   | Aston Martin | 60 |
+| Ferrari | 62 |   | Ferrari | 15 |
+| Haas F1 Team | 134 |   | Haas F1 Team | 40 |
+| McLaren | -16 |   | McLaren | 25 |
+| Mercedes | 4 |   | Mercedes | -8 |
+| Racing Bulls | -60 |   | Racing Bulls | 71 |
+| Red Bull Racing | 42 |   | Red Bull Racing | 73 |
+| Williams | 75 |   | Williams | 44 |
+| Kick Sauber | 83 |   |  |  |
+|  |  |   | Audi | 38 |
+|  |  |   | Cadillac | 64 |
 
-**Q3 — net position change by driver** (all drivers, 2025+2026 combined):
+**Q3 — net position change by driver and season**:
 
-| driver | net positions | | driver | net positions |
-|---|---|---|---|---|
-| Esteban Ocon | +88 | | Carlos Sainz | +29 |
-| Nico Hülkenberg | +87 | | Yuki Tsunoda | +21 |
-| Oliver Bearman | +79 | | Kimi Antonelli | +18 |
-| Alexander Albon | +78 | | Valtteri Bottas | +14 |
-| Lance Stroll | +74 | | Ryo Hirakawa | +8 |
-| Lewis Hamilton | +66 | | Charles Leclerc | +7 |
-| Sergio Perez | +49 | | Jack Doohan | +6 |
-| Liam Lawson | +46 | | Lando Norris | +1 |
-| Max Verstappen | +46 | | Isack Hadjar | -4 |
-| Franco Colapinto | +36 | | Oscar Piastri | -7 |
-| Arvid Lindblad | +35 | | Rafael Camara | -9 |
-| Fernando Alonso | +33 | | Pierre Gasly | -11 |
-| Gabriel Bortoleto | +32 | | George Russell | -17 |
+| 2025 Driver | Net Positions |   | 2026 Driver | Net Positions |
+|---|---:|---|---|---:|
+| Alexander Albon | 66 |   | Alexander Albon | 12 |
+| Carlos Sainz | 9 |   | Carlos Sainz | 32 |
+| Charles Leclerc | 9 |   | Charles Leclerc | -2 |
+| Esteban Ocon | 61 |   | Esteban Ocon | 27 |
+| Fernando Alonso | -3 |   | Fernando Alonso | 35 |
+| Franco Colapinto | 11 |   | Franco Colapinto | 28 |
+| Gabriel Bortoleto | 8 |   | Gabriel Bortoleto | 25 |
+| George Russell | -4 |   | George Russell | -20 |
+| Isack Hadjar | -37 |   | Isack Hadjar | 22 |
+| Kimi Antonelli | 8 |   | Kimi Antonelli | 12 |
+| Lance Stroll | 53 |   | Lance Stroll | 25 |
+| Lando Norris | -13 |   | Lando Norris | 15 |
+| Lewis Hamilton | 53 |   | Lewis Hamilton | 17 |
+| Liam Lawson | -1 |   | Liam Lawson | 40 |
+| Max Verstappen | 6 |   | Max Verstappen | 40 |
+| Nico Hulkenberg | 75 |   | Nico Hulkenberg | 13 |
+| Oliver Bearman | 73 |   | Oliver Bearman | 15 |
+| Oscar Piastri | -3 |   | Oscar Piastri | 10 |
+| Pierre Gasly | -12 |   | Pierre Gasly | 4 |
+| Yuki Tsunoda | 14 |   | Yuki Tsunoda | 7 |
+| Jack Doohan | 6 |   |  |  |
+|  |  |   | Arvid Lindblad | 35 |
+|  |  |   | Rafael Camara | -10 |
+|  |  |   | Ryo Hirakawa | 8 |
+|  |  |   | Sergio Perez | 49 |
+|  |  |   | Valtteri Bottas | 15 |
 
-**Q4 — pole sitter leading after lap 1** (31 of 43 races; 2025 left, 2026 right):
+**Q4 — pole sitter leading after lap 1**:
 
-| season | event | driver | | season | event | driver |
-|---|---|---|---|---|---|---|
-| 2025 | Abu Dhabi Grand Prix | Max Verstappen | | 2026 | Austrian Grand Prix | George Russell |
-| 2025 | Australian Grand Prix | Lando Norris | | 2026 | Azerbaijan Grand Prix | George Russell |
-| 2025 | Austrian Grand Prix | Lando Norris | | 2026 | Bahrain Grand Prix | Max Verstappen |
-| 2025 | Bahrain Grand Prix | Oscar Piastri | | 2026 | Barcelona Grand Prix | George Russell |
-| 2025 | Belgian Grand Prix | Lando Norris | | 2026 | Belgian Grand Prix | Kimi Antonelli |
-| 2025 | British Grand Prix | Max Verstappen | | 2026 | Dutch Grand Prix | Lando Norris |
-| 2025 | Canadian Grand Prix | George Russell | | 2026 | Italian Grand Prix | Pierre Gasly |
-| 2025 | Chinese Grand Prix | Oscar Piastri | | 2026 | Monaco Grand Prix | Kimi Antonelli |
-| 2025 | Dutch Grand Prix | Oscar Piastri | | 2026 | Singapore Grand Prix | Max Verstappen |
-| 2025 | Hungarian Grand Prix | Charles Leclerc | | 2026 | Spanish Grand Prix | Lando Norris |
-| 2025 | Italian Grand Prix | Max Verstappen | | 2026 | United States Grand Prix | Kimi Antonelli |
-| 2025 | Japanese Grand Prix | Max Verstappen | | | | |
-| 2025 | Mexico City Grand Prix | Lando Norris | | | | |
-| 2025 | Monaco Grand Prix | Lando Norris | | | | |
-| 2025 | Qatar Grand Prix | Oscar Piastri | | | | |
-| 2025 | São Paulo Grand Prix | Lando Norris | | | | |
-| 2025 | Saudi Arabian Grand Prix | Max Verstappen | | | | |
-| 2025 | Singapore Grand Prix | George Russell | | | | |
-| 2025 | Spanish Grand Prix | Oscar Piastri | | | | |
-| 2025 | United States Grand Prix | Max Verstappen | | | | |
+| 2025 Event | Circuit | Driver | Count |   | 2026 Event | Circuit | Driver | Count |
+|---|---|---|---:|---|---|---|---|---:|
+| Austrian Grand Prix | Spielberg | Lando Norris | 2 |   | Austrian Grand Prix | Spielberg | George Russell | 2 |
+| Azerbaijan Grand Prix | Baku | Max Verstappen | 2 |   | Azerbaijan Grand Prix | Baku | George Russell | 2 |
+| Belgian Grand Prix | Spa-Francorchamps | Lando Norris | 2 |   | Belgian Grand Prix | Spa-Francorchamps | Kimi Antonelli | 2 |
+| Spanish Grand Prix | Catalunya | Oscar Piastri | 2 |   | Barcelona Grand Prix | Catalunya | George Russell | 2 |
+| Dutch Grand Prix | Zandvoort | Oscar Piastri | 2 |   | Dutch Grand Prix | Zandvoort | Lando Norris | 2 |
+| Italian Grand Prix | Monza | Max Verstappen | 2 |   | Italian Grand Prix | Monza | Pierre Gasly | 2 |
+| Monaco Grand Prix | Monte Carlo | Lando Norris | 2 |   | Monaco Grand Prix | Monte Carlo | Kimi Antonelli | 2 |
+| Singapore Grand Prix | Singapore | George Russell | 2 |   | Singapore Grand Prix | Singapore | Max Verstappen | 2 |
+| United States Grand Prix | Austin | Max Verstappen | 2 |   | United States Grand Prix | Austin | Kimi Antonelli | 2 |
+| Abu Dhabi Grand Prix | Yas Marina Circuit | Max Verstappen | 1 |   |  |  |  |  |
+| Australian Grand Prix | Melbourne | Lando Norris | 1 |   |  |  |  |  |
+| Bahrain Grand Prix | Sakhir | Oscar Piastri | 1 |   |  |  |  |  |
+| British Grand Prix | Silverstone | Max Verstappen | 1 |   |  |  |  |  |
+| Canadian Grand Prix | Montreal | George Russell | 1 |   |  |  |  |  |
+| Chinese Grand Prix | Shanghai | Oscar Piastri | 1 |   |  |  |  |  |
+| Hungarian Grand Prix | Hungaroring | Charles Leclerc | 1 |   |  |  |  |  |
+| Japanese Grand Prix | Suzuka | Max Verstappen | 1 |   |  |  |  |  |
+| Mexico City Grand Prix | Mexico City | Lando Norris | 1 |   |  |  |  |  |
+| Qatar Grand Prix | Lusail | Oscar Piastri | 1 |   |  |  |  |  |
+| São Paulo Grand Prix | Interlagos | Lando Norris | 1 |   |  |  |  |  |
+| Saudi Arabian Grand Prix | Jeddah | Max Verstappen | 1 |   |  |  |  |  |
+|  |  |  |  |   | Bahrain Grand Prix | Kuala Lumpur | Max Verstappen | 1 |
+|  |  |  |  |   | Las Vegas Grand Prix | Las Vegas | Max Verstappen | 1 |
+|  |  |  |  |   | Spanish Grand Prix | Madring | Lando Norris | 1 ||
 
-**Q5 — teammate qualifying/race gap:** 919 driver-event rows (one per
-driver/team/event, both seasons); see
+**Q5 — teammate qualifying/race gap:** partial result; see
 [`03_queries/query_05_teammate_comparison.sql`](03_queries/query_05_teammate_comparison.sql)
-for the full table. First rows of the output (2025 Abu Dhabi Grand Prix):
+for the full table. First 30 rows of the output:
 
-| season | event | team | driver | qualifying pos | finish pos | gap to pole (s) |
-|---|---|---|---|---|---|---|
-| 2025 | Abu Dhabi Grand Prix | Alpine | Pierre Gasly | 19 | 19 | 1.261 |
-| 2025 | Abu Dhabi Grand Prix | Alpine | Franco Colapinto | 20 | 20 | 1.683 |
-| 2025 | Abu Dhabi Grand Prix | Aston Martin | Lance Stroll | 15 | 10 | 0.890 |
-| 2025 | Abu Dhabi Grand Prix | Aston Martin | Fernando Alonso | 6 | 6 | 0.695 |
-| 2025 | Abu Dhabi Grand Prix | Ferrari | Lewis Hamilton | 16 | 8 | 1.187 |
-| 2025 | Abu Dhabi Grand Prix | Ferrari | Charles Leclerc | 5 | 4 | 0.523 |
-| 2025 | Abu Dhabi Grand Prix | Haas F1 Team | Esteban Ocon | 8 | 7 | 0.706 |
-| 2025 | Abu Dhabi Grand Prix | Haas F1 Team | Oliver Bearman | 11 | 12 | 0.834 |
-| 2025 | Abu Dhabi Grand Prix | Kick Sauber | Nico Hülkenberg | 18 | 9 | 1.243 |
-| 2025 | Abu Dhabi Grand Prix | Kick Sauber | Gabriel Bortoleto | 7 | 11 | 0.697 |
+*Partial result — first 30 rows shown.*
+
+| Season | Event | Team | Driver 1 | Driver 2 | Driver 1 Qualifying Position | Driver 2 Qualifying Position | Qualifying Position Gap | Driver 1 Finish Position | Driver 2 Finish Position | Finish Position Gap |
+|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|
+| 2025 | Abu Dhabi Grand Prix | Alpine | Franco Colapinto | Pierre Gasly | 20 | 19 | 1 | 20 | 19 | 1 |
+| 2025 | Abu Dhabi Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 6 | 15 | 9 | 6 | 10 | 4 |
+| 2025 | Abu Dhabi Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 5 | 16 | 11 | 4 | 8 | 4 |
+| 2025 | Abu Dhabi Grand Prix | Haas F1 Team | Esteban Ocon | Oliver Bearman | 8 | 11 | 3 | 7 | 12 | 5 |
+| 2025 | Abu Dhabi Grand Prix | Kick Sauber | Gabriel Bortoleto | Nico Hulkenberg | 7 | 18 | 11 | 11 | 9 | 2 |
+| 2025 | Abu Dhabi Grand Prix | McLaren | Lando Norris | Oscar Piastri | 2 | 3 | 1 | 3 | 2 | 1 |
+| 2025 | Abu Dhabi Grand Prix | Mercedes | George Russell | Kimi Antonelli | 4 | 14 | 10 | 5 | 15 | 10 |
+| 2025 | Abu Dhabi Grand Prix | Racing Bulls | Isack Hadjar | Liam Lawson | 9 | 13 | 4 | 17 | 18 | 1 |
+| 2025 | Abu Dhabi Grand Prix | Red Bull Racing | Max Verstappen | Yuki Tsunoda | 1 | 10 | 9 | 1 | 14 | 13 |
+| 2025 | Abu Dhabi Grand Prix | Williams | Alexander Albon | Carlos Sainz | 17 | 12 | 5 | 16 | 13 | 3 |
+| 2025 | Australian Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 7 | 8 | 1 | 8 | 10 | 2 |
+| 2025 | Australian Grand Prix | McLaren | Lando Norris | Oscar Piastri | 1 | 2 | 1 | 1 | 9 | 8 |
+| 2025 | Australian Grand Prix | Mercedes | George Russell | Kimi Antonelli | 4 | 16 | 12 | 3 | 4 | 1 |
+| 2025 | Austrian Grand Prix | Alpine | Franco Colapinto | Pierre Gasly | 14 | 10 | 4 | 15 | 13 | 2 |
+| 2025 | Austrian Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 11 | 16 | 5 | 7 | 14 | 7 |
+| 2025 | Austrian Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 2 | 4 | 2 | 3 | 4 | 1 |
+| 2025 | Austrian Grand Prix | Haas F1 Team | Esteban Ocon | Oliver Bearman | 17 | 15 | 2 | 10 | 11 | 1 |
+| 2025 | Austrian Grand Prix | Kick Sauber | Gabriel Bortoleto | Nico Hulkenberg | 8 | 20 | 12 | 8 | 9 | 1 |
+| 2025 | Austrian Grand Prix | McLaren | Lando Norris | Oscar Piastri | 1 | 3 | 2 | 1 | 2 | 1 |
+| 2025 | Austrian Grand Prix | Racing Bulls | Isack Hadjar | Liam Lawson | 13 | 6 | 7 | 12 | 6 | 6 |
+| 2025 | Azerbaijan Grand Prix | Alpine | Franco Colapinto | Pierre Gasly | 16 | 18 | 2 | 19 | 18 | 1 |
+| 2025 | Azerbaijan Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 11 | 14 | 3 | 15 | 17 | 2 |
+| 2025 | Azerbaijan Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 10 | 12 | 2 | 9 | 8 | 1 |
+| 2025 | Azerbaijan Grand Prix | Kick Sauber | Gabriel Bortoleto | Nico Hulkenberg | 13 | 17 | 4 | 11 | 16 | 5 |
+| 2025 | Azerbaijan Grand Prix | Mercedes | George Russell | Kimi Antonelli | 5 | 4 | 1 | 2 | 4 | 2 |
+| 2025 | Azerbaijan Grand Prix | Racing Bulls | Isack Hadjar | Liam Lawson | 8 | 3 | 5 | 10 | 5 | 5 |
+| 2025 | Azerbaijan Grand Prix | Red Bull Racing | Max Verstappen | Yuki Tsunoda | 1 | 6 | 5 | 1 | 6 | 5 |
+| 2025 | Azerbaijan Grand Prix | Williams | Alexander Albon | Carlos Sainz | 19 | 2 | 17 | 13 | 3 | 10 |
+| 2025 | Bahrain Grand Prix | Alpine | Jack Doohan | Pierre Gasly | 11 | 5 | 6 | 14 | 7 | 7 |
+| 2025 | Bahrain Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 13 | 19 | 6 | 15 | 17 | 2 |
 
 **Q6 — largest qualifying gap to pole among race winners** (first 5):
 
