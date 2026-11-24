@@ -5,86 +5,43 @@ from decimal import Decimal
 import duckdb
 import psycopg2
 from pathlib import Path
-import csv
-
 
 # Queries
 
-POSTGRES_QUERIES = {
-    "Q2 - team position change": """
-        SELECT
-            t.TeamName,
-            SUM(r.PlacesGainedLost) AS net_positions
-        FROM gold.FactDriverEventResult r
-        JOIN gold.DimTeam t
-        ON r.TeamKey = t.TeamKey
-        GROUP BY t.TeamName
-        ORDER BY net_positions DESC, t.TeamName ASC;
-    """,
+QUERY_FILES = {
+    "Q2 - team position change":
+        "/queries/query_02_team_position_change.sql",
 
-    "Q4 - pole retained lead after lap 1": """
-        SELECT
-            e.Season,
-            e.EventName,
-            d.DriverId
-        FROM gold.FactLap l
-        JOIN gold.DimEvent e
-        ON l.EventKey = e.EventKey
-        JOIN gold.DimDriver d
-        ON l.DriverKey = d.DriverKey
-        JOIN gold.FactDriverEventResult r
-        ON l.EventKey = r.EventKey
-        AND l.DriverKey = r.DriverKey
-        WHERE r.QualifyingPosition = 1
-        AND l.LapNumber = 1
-        AND l.LapPosition = 1
-        AND l.SessionType = 'Race'
-        ORDER BY e.Season, e.EventName, d.DriverId;
-    """
+    "Q4 - P1 retained lead after lap 1":
+        "/queries/query_04_lap1_leader.sql",
 }
 
-# DuckDB contains the same Gold tables, but without the "gold." schema prefix.
-DUCKDB_QUERIES = {
-    "Q2 - team position change": """
-        SELECT
-            t.TeamName,
-            SUM(r.PlacesGainedLost) AS net_positions
-        FROM FactDriverEventResult r
-        JOIN DimTeam t
-        ON r.TeamKey = t.TeamKey
-        GROUP BY t.TeamName
-        ORDER BY net_positions DESC, t.TeamName ASC;
-    """,
 
-    "Q4 - pole retained lead after lap 1": """
-        SELECT
-            e.Season,
-            e.EventName,
-            d.DriverId
-        FROM FactLap l
-        JOIN DimEvent e
-        ON l.EventKey = e.EventKey
-        JOIN DimDriver d
-        ON l.DriverKey = d.DriverKey
-        JOIN FactDriverEventResult r
-        ON l.EventKey = r.EventKey
-        AND l.DriverKey = r.DriverKey
-        WHERE r.QualifyingPosition = 1
-        AND l.LapNumber = 1
-        AND l.LapPosition = 1
-        AND l.SessionType = 'Race'
-        ORDER BY e.Season, e.EventName, d.DriverId;
-    """
+def load_query(path):
+    return Path(path).read_text(encoding="utf-8").strip()
+
+
+POSTGRES_QUERIES = {
+    name: load_query(path)
+    for name, path in QUERY_FILES.items()
+}
+
+
+# DuckDB contains the Gold tables without the PostgreSQL "gold." schema.
+DUCKDB_QUERIES = {
+    name: sql.replace("gold.", "")
+    for name, sql in POSTGRES_QUERIES.items()
 }
 
 # Connections
 
 pg = psycopg2.connect(
-    host="host.docker.internal",
-    port=os.getenv("POSTGRES_PORT", "5433"),
-    dbname=os.getenv("POSTGRES_DB", "f1_warehouse"),
-    user=os.getenv("POSTGRES_USER", "f1"),
-    password=os.environ["POSTGRES_PASSWORD"],
+    host=os.getenv("PGHOST", "warehouse"),
+    port=os.getenv("PGPORT", "5432"),
+    dbname=os.getenv("PGDATABASE", "f1_warehouse"),
+    user=os.getenv("PGUSER", "f1"),
+    password=os.environ["PGPASSWORD"],
+    options="-c search_path=gold,public",
 )
 
 duck = duckdb.connect("/data/f1_analytics.duckdb")
@@ -301,14 +258,6 @@ for name, output in query_outputs.items():
         )
         f.write(markdown_table(columns, rows))
         f.write("\n")
-
-    # CSV result
-    result_csv = output_dir / f"{safe_name}_results.csv"
-
-    with result_csv.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(columns)
-        writer.writerows(rows)
 
 # Markdown
 md_path = output_dir / "comparison.md"

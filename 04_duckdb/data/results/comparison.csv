@@ -1,3 +1,0 @@
-Query,Results match,Rows returned,PostgreSQL median ms,DuckDB median ms,PostgreSQL EXPLAIN execution ms
-Q2 - team position change,True,10,1.726,4.411,0.196
-Q4 - pole retained lead after lap 1,True,1,2.032,6.157,0.176

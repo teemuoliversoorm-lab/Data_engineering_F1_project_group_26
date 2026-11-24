@@ -148,6 +148,30 @@ services:
         condition: service_healthy
     command: [build]
 
+  duckdb-image:
+    image: f1-duckdb
+    build:
+      context: ./04_duckdb
+    command: ["python", "-c", "print('f1-duckdb image ready')"]
+    restart: "no"
+
+  duckdb-compare:
+    image: f1-duckdb
+    profiles: [tools]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    environment:
+      PGHOST: warehouse
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-f1_warehouse}
+      PGUSER: ${POSTGRES_USER:-f1}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - duckdb-data:/data
+      - ./03_queries:/queries:ro
+    command: ["python", "compare_engines.py"]
+
 volumes:
   warehouse-data:
   airflow-db-data:
