@@ -1,8 +1,11 @@
 SELECT
+    e.Season,
     d.DriverId,
-    SUM(r.PlacesGainedLost) AS net_positions
-FROM FactDriverEventResult r
-JOIN DimDriver d
+    SUM(r.PlacesGainedLost) AS NetPositions
+FROM gold.FactDriverEventResult r
+JOIN gold.DimDriver d
     ON r.DriverKey = d.DriverKey
-GROUP BY d.DriverId
-ORDER BY net_positions DESC;
+JOIN gold.DimEvent e
+    ON r.EventKey = e.EventKey
+GROUP BY e.Season, d.DriverId
+ORDER BY e.Season, NetPositions DESC
