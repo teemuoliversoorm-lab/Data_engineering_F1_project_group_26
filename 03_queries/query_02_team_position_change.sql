@@ -1,8 +1,11 @@
 SELECT
+    e.Season,
     t.TeamName,
-    SUM(r.PlacesGainedLost) AS net_positions
-FROM FactDriverEventResult r
-JOIN DimTeam t
+    SUM(r.PlacesGainedLost) AS NetPositions
+FROM gold.FactDriverEventResult r
+JOIN gold.DimTeam t
     ON r.TeamKey = t.TeamKey
-GROUP BY t.TeamName
-ORDER BY net_positions DESC;
+JOIN gold.DimEvent e
+    ON r.EventKey = e.EventKey
+GROUP BY e.Season, t.TeamName
+ORDER BY e.Season, NetPositions DESC, t.TeamName;
