@@ -16,7 +16,7 @@ JOIN gold.FactDriverEventResult r
    AND l.DriverKey = r.DriverKey
 WHERE r.GridPosition = 1
   AND l.LapNumber = 1
-  AND l.LapPosition = 1s
+  AND l.LapPosition = 1
   AND l.SessionType = 'Race'
 ORDER BY
     e.Season,
