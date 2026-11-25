@@ -41,6 +41,10 @@ class DataQualityTests(unittest.TestCase):
     def test_valid_batch_is_accepted(self):
         self.assertEqual(check_dataset("session_results", SAMPLE_PAYLOAD["session_results"]), 1)
 
+    def test_pit_lane_start_is_accepted(self):
+        row = dict(SAMPLE_PAYLOAD["session_results"][0], GridPosition=0)
+        self.assertEqual(check_dataset("session_results", [row]), 1)
+
     def test_position_outside_the_grid_is_rejected(self):
         bad_row = dict(SAMPLE_PAYLOAD["session_results"][0], Position=99)
         with self.assertRaises(DataQualityError):

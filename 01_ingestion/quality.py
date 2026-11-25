@@ -38,10 +38,9 @@ def check_dataset(dataset, rows):
     """The pipeline's required data-quality check.
 
     Rejects a batch that is empty, missing required fields, has duplicate
-    business keys, or has grid/finishing positions outside the physically
-    possible 1..24 range. Returns the number of rows accepted, or raises
-    DataQualityError -- a rejected batch is never loaded (see 01_ingestion/
-    load_bronze.py), so a bad source response can't silently corrupt bronze.
+    business keys, or has non-null positions outside the inclusive 0..24 range.
+    A grid position of 0 is accepted for pit-lane starts.
+    Returns the number of accepted rows or raises DataQualityError before loading.
     """
     if dataset not in DATASETS:
         raise DataQualityError(f"Unknown dataset: {dataset}")
