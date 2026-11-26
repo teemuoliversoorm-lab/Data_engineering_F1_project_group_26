@@ -249,19 +249,20 @@ docker compose run --rm dbt build
 ---
 
 ## Query results
-Run the business questions queries ([`03_queries/`]) against Gold while using Visual Studio Code Database (or other) extension or DBeaver or your preferred tool.
 
-Results below are from a real run on **11 November 2026**, covering the full
-2025 season (24 rounds) and every completed 2026 round through Brazil
-(round 20 of 23). Two
-known OpenF1 gaps affect coverage: **Baku 2025 Qualifying** has no published
-lap data, so that one Q session (and its qualifying times) never loaded.
+After dbt builds Gold, open any file in [`03_queries/`](03_queries/) in a SQL client connected to the PostgreSQL warehouse. All six queries use the `gold` schema explicitly and work with the default PostgreSQL search path. For example, run Q5 from the repository root in WSL.
+
+```sh
+docker compose exec -T warehouse sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < 03_queries/query_05_teammate_comparison.sql
+```
+
+The Q1, Q3, Q5 and Q6 examples use the [checked-in Gold snapshot](04_duckdb/data/f1_analytics.duckdb), covering 24 rounds in 2025 and 20 in 2026. The Q2 and Q4 tables show the results recorded on 11 November 2026.
 
 **Q1 — how often does pole win the race?**
 
 | races | pole wins | win % |
 |---|---|---|
-| 43 | 29 | 67.44 |
+| 44 | 30 | 68.18 |
 
 **Q2 — net position change by team and season**:
 
@@ -280,36 +281,37 @@ lap data, so that one Q session (and its qualifying times) never loaded.
 |  |  |   | Audi | 38 |
 |  |  |   | Cadillac | 64 |
 
-**Q3 — net position change by driver and season**:
+**Q3 — net position change by driver and season**
 
-| 2025 Driver | Net Positions |   | 2026 Driver | Net Positions |
-|---|---:|---|---|---:|
-| Alexander Albon | 66 |   | Alexander Albon | 12 |
-| Carlos Sainz | 9 |   | Carlos Sainz | 32 |
-| Charles Leclerc | 9 |   | Charles Leclerc | -2 |
-| Esteban Ocon | 61 |   | Esteban Ocon | 27 |
-| Fernando Alonso | -3 |   | Fernando Alonso | 35 |
-| Franco Colapinto | 11 |   | Franco Colapinto | 28 |
-| Gabriel Bortoleto | 8 |   | Gabriel Bortoleto | 25 |
-| George Russell | -4 |   | George Russell | -20 |
-| Isack Hadjar | -37 |   | Isack Hadjar | 22 |
-| Kimi Antonelli | 8 |   | Kimi Antonelli | 12 |
-| Lance Stroll | 53 |   | Lance Stroll | 25 |
-| Lando Norris | -13 |   | Lando Norris | 15 |
-| Lewis Hamilton | 53 |   | Lewis Hamilton | 17 |
-| Liam Lawson | -1 |   | Liam Lawson | 40 |
-| Max Verstappen | 6 |   | Max Verstappen | 40 |
-| Nico Hulkenberg | 75 |   | Nico Hulkenberg | 13 |
-| Oliver Bearman | 73 |   | Oliver Bearman | 15 |
-| Oscar Piastri | -3 |   | Oscar Piastri | 10 |
-| Pierre Gasly | -12 |   | Pierre Gasly | 4 |
-| Yuki Tsunoda | 14 |   | Yuki Tsunoda | 7 |
-| Jack Doohan | 6 |   |  |  |
-|  |  |   | Arvid Lindblad | 35 |
-|  |  |   | Rafael Camara | -10 |
-|  |  |   | Ryo Hirakawa | 8 |
-|  |  |   | Sergio Perez | 49 |
-|  |  |   | Valtteri Bottas | 15 |
+The query sums each driver's known grid-to-finish changes and ranks the totals from highest to lowest within each season. If none of a driver's races has both a positive grid position and a positive finish position, the total is `NULL` and sorts last. Ties are ordered by driver ID.
+
+| 2025 driver | Net positions | 2026 driver | Net positions |
+|---|---:|---|---:|
+| Nico Hulkenberg | 75 | Sergio Perez | 49 |
+| Oliver Bearman | 73 | Liam Lawson | 47 |
+| Alexander Albon | 66 | Max Verstappen | 40 |
+| Esteban Ocon | 61 | Fernando Alonso | 36 |
+| Lance Stroll | 53 | Arvid Lindblad | 35 |
+| Lewis Hamilton | 53 | Isack Hadjar | 33 |
+| Yuki Tsunoda | 14 | Esteban Ocon | 27 |
+| Franco Colapinto | 11 | Franco Colapinto | 25 |
+| Carlos Sainz | 9 | Gabriel Bortoleto | 24 |
+| Charles Leclerc | 9 | Lance Stroll | 21 |
+| Gabriel Bortoleto | 8 | Carlos Sainz | 20 |
+| Kimi Antonelli | 8 | Lando Norris | 14 |
+| Jack Doohan | 6 | Valtteri Bottas | 14 |
+| Max Verstappen | 6 | Lewis Hamilton | 13 |
+| Liam Lawson | -1 | Alexander Albon | 12 |
+| Fernando Alonso | -3 | Nico Hulkenberg | 12 |
+| Oscar Piastri | -3 | Kimi Antonelli | 10 |
+| George Russell | -4 | Ryo Hirakawa | 8 |
+| Pierre Gasly | -12 | Yuki Tsunoda | 7 |
+| Lando Norris | -13 | Oliver Bearman | 6 |
+| Isack Hadjar | -37 | Pierre Gasly | 1 |
+|  |  | Charles Leclerc | -2 |
+|  |  | Oscar Piastri | -4 |
+|  |  | Rafael Camara | -9 |
+|  |  | George Russell | -13 |
 
 **Q4 — pole sitter leading after lap 1**:
 
@@ -340,60 +342,24 @@ lap data, so that one Q session (and its qualifying times) never loaded.
 |  |  |  |  |   | Las Vegas Grand Prix | Las Vegas | Max Verstappen | 1 |
 |  |  |  |  |   | Spanish Grand Prix | Madring | Lando Norris | 1 ||
 
-**Q5 — teammate qualifying/race gap:** partial result; see
-[`03_queries/query_05_teammate_comparison.sql`](03_queries/query_05_teammate_comparison.sql)
-for the full table. First 30 rows of the output:
+**Q5 — does the better qualifier finish ahead of their teammate?**
 
-*Partial result — first 30 rows shown.*
+Each row compares one teammate pair at one event and shows the gaps in qualifying and finishing positions. `BetterQualifierFinishedAhead` is true when the teammate who qualified ahead also finished ahead. Both drivers need positive positions in both sessions. A tie in either session gives a `NULL` outcome and is excluded from the season percentage.
 
-| Season | Event | Team | Driver 1 | Driver 2 | Driver 1 Qualifying Position | Driver 2 Qualifying Position | Qualifying Position Gap | Driver 1 Finish Position | Driver 2 Finish Position | Finish Position Gap |
-|---:|---|---|---|---|---:|---:|---:|---:|---:|---:|
-| 2025 | Abu Dhabi Grand Prix | Alpine | Franco Colapinto | Pierre Gasly | 20 | 19 | 1 | 20 | 19 | 1 |
-| 2025 | Abu Dhabi Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 6 | 15 | 9 | 6 | 10 | 4 |
-| 2025 | Abu Dhabi Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 5 | 16 | 11 | 4 | 8 | 4 |
-| 2025 | Abu Dhabi Grand Prix | Haas F1 Team | Esteban Ocon | Oliver Bearman | 8 | 11 | 3 | 7 | 12 | 5 |
-| 2025 | Abu Dhabi Grand Prix | Kick Sauber | Gabriel Bortoleto | Nico Hulkenberg | 7 | 18 | 11 | 11 | 9 | 2 |
-| 2025 | Abu Dhabi Grand Prix | McLaren | Lando Norris | Oscar Piastri | 2 | 3 | 1 | 3 | 2 | 1 |
-| 2025 | Abu Dhabi Grand Prix | Mercedes | George Russell | Kimi Antonelli | 4 | 14 | 10 | 5 | 15 | 10 |
-| 2025 | Abu Dhabi Grand Prix | Racing Bulls | Isack Hadjar | Liam Lawson | 9 | 13 | 4 | 17 | 18 | 1 |
-| 2025 | Abu Dhabi Grand Prix | Red Bull Racing | Max Verstappen | Yuki Tsunoda | 1 | 10 | 9 | 1 | 14 | 13 |
-| 2025 | Abu Dhabi Grand Prix | Williams | Alexander Albon | Carlos Sainz | 17 | 12 | 5 | 16 | 13 | 3 |
-| 2025 | Australian Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 7 | 8 | 1 | 8 | 10 | 2 |
-| 2025 | Australian Grand Prix | McLaren | Lando Norris | Oscar Piastri | 1 | 2 | 1 | 1 | 9 | 8 |
-| 2025 | Australian Grand Prix | Mercedes | George Russell | Kimi Antonelli | 4 | 16 | 12 | 3 | 4 | 1 |
-| 2025 | Austrian Grand Prix | Alpine | Franco Colapinto | Pierre Gasly | 14 | 10 | 4 | 15 | 13 | 2 |
-| 2025 | Austrian Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 11 | 16 | 5 | 7 | 14 | 7 |
-| 2025 | Austrian Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 2 | 4 | 2 | 3 | 4 | 1 |
-| 2025 | Austrian Grand Prix | Haas F1 Team | Esteban Ocon | Oliver Bearman | 17 | 15 | 2 | 10 | 11 | 1 |
-| 2025 | Austrian Grand Prix | Kick Sauber | Gabriel Bortoleto | Nico Hulkenberg | 8 | 20 | 12 | 8 | 9 | 1 |
-| 2025 | Austrian Grand Prix | McLaren | Lando Norris | Oscar Piastri | 1 | 3 | 2 | 1 | 2 | 1 |
-| 2025 | Austrian Grand Prix | Racing Bulls | Isack Hadjar | Liam Lawson | 13 | 6 | 7 | 12 | 6 | 6 |
-| 2025 | Azerbaijan Grand Prix | Alpine | Franco Colapinto | Pierre Gasly | 16 | 18 | 2 | 19 | 18 | 1 |
-| 2025 | Azerbaijan Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 11 | 14 | 3 | 15 | 17 | 2 |
-| 2025 | Azerbaijan Grand Prix | Ferrari | Charles Leclerc | Lewis Hamilton | 10 | 12 | 2 | 9 | 8 | 1 |
-| 2025 | Azerbaijan Grand Prix | Kick Sauber | Gabriel Bortoleto | Nico Hulkenberg | 13 | 17 | 4 | 11 | 16 | 5 |
-| 2025 | Azerbaijan Grand Prix | Mercedes | George Russell | Kimi Antonelli | 5 | 4 | 1 | 2 | 4 | 2 |
-| 2025 | Azerbaijan Grand Prix | Racing Bulls | Isack Hadjar | Liam Lawson | 8 | 3 | 5 | 10 | 5 | 5 |
-| 2025 | Azerbaijan Grand Prix | Red Bull Racing | Max Verstappen | Yuki Tsunoda | 1 | 6 | 5 | 1 | 6 | 5 |
-| 2025 | Azerbaijan Grand Prix | Williams | Alexander Albon | Carlos Sainz | 19 | 2 | 17 | 13 | 3 | 10 |
-| 2025 | Bahrain Grand Prix | Alpine | Jack Doohan | Pierre Gasly | 11 | 5 | 6 | 14 | 7 | 7 |
-| 2025 | Bahrain Grand Prix | Aston Martin | Fernando Alonso | Lance Stroll | 13 | 19 | 6 | 15 | 17 | 2 |
+| 2025 McLaren event | Norris qualifying / finish | Piastri qualifying / finish | Qualifying gap | Finish gap | Better qualifier finished ahead? |
+|---|---:|---:|---:|---:|---|
+| Abu Dhabi Grand Prix | 2 / 3 | 3 / 2 | 1 | 1 | No |
+| Australian Grand Prix | 1 / 1 | 2 / 9 | 1 | 8 | Yes |
 
-**Q6 — largest qualifying gap to pole among race winners** (first 5):
+For McLaren in 2025, the better qualifier finished ahead in **15 of 22 comparable pairs (68.18%)**. The query repeats the team's season counts (`TeamSeasonAheadPairs`, `TeamSeasonComparablePairs`) and percentage (`TeamSeasonAheadPct`) on each event row. A team-season with only tied pairs has a `NULL` percentage. [Full Q5 query](03_queries/query_05_teammate_comparison.sql)
 
-| event | season | driver | qualifying position | gap to pole (s) |
-|---|---|---|---|---|
+**Q6 — largest qualifying gap to pole among race winners**
+
+Only winners with a known qualifying gap are eligible. The query returns one row.
+
+| Event | Season | Driver | Qualifying position | Gap to pole (s) |
+|---|---:|---|---:|---:|
 | Las Vegas Grand Prix | 2025 | Max Verstappen | 2 | 0.323 |
-| Italian Grand Prix | 2026 | Kimi Antonelli | 7 | 0.307 |
-| Qatar Grand Prix | 2025 | Max Verstappen | 3 | 0.264 |
-| Mexico City Grand Prix | 2026 | Max Verstappen | 4 | 0.178 |
-| British Grand Prix | 2026 | Charles Leclerc | 2 | 0.175 |
-
-This answer was wrong before a fix found during this round of testing: the one
-race with an unknown qualifying gap (Baku 2025, see above) was being picked as
-the "largest" gap, because PostgreSQL sorts `NULL` as larger than any value in
-`ORDER BY ... DESC`. Fixed in `03_queries/query_06_biggest_gap_win.sql` by
-excluding rows with no known gap.
 
 ---
 

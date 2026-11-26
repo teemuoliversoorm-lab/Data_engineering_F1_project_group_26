@@ -8,4 +8,4 @@ JOIN gold.DimDriver d
 JOIN gold.DimEvent e
     ON r.EventKey = e.EventKey
 GROUP BY e.Season, d.DriverId
-ORDER BY e.Season, NetPositions DESC
+ORDER BY e.Season, NetPositions DESC NULLS LAST, d.DriverId;

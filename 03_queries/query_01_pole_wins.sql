@@ -16,5 +16,5 @@ SELECT
         / COUNT(*),
         2
     ) AS win_percentage
-FROM FactDriverEventResult
+FROM gold.FactDriverEventResult
 WHERE QualifyingPosition = 1;
