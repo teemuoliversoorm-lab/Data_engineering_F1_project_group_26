@@ -9,17 +9,20 @@ session) pair: extract -> check -> load. Mapping per session means one failed
 extraction doesn't block any other session's load (see ingest_session.expand
 below). After all sessions are attempted, build_warehouse runs `dbt build`
 (as a sibling container -- see README "dbt automation") to refresh silver and
-gold from whatever is now in bronze, even if some sessions failed.
+gold from whatever is now in bronze, even if some sessions failed. Finally,
+trigger_duckdb_refresh fires the separate f1_duckdb_refresh DAG (bonus,
+Project_2.md 2.5A) without waiting for it, so that DAG's outcome can never
+affect this one's status -- see README "DuckDB bonus".
 """
 
 import os
 from datetime import date, timedelta
-from docker.types import Mount
 
 import pendulum
 from airflow.decorators import dag, task, task_group
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 
 # Sessions confirmed permanently unavailable from OpenF1 (not a transient
@@ -144,27 +147,16 @@ def f1_ingestion():
         trigger_rule="all_done",
     )
 
-    refresh_duckdb = DockerOperator(
-        task_id="refresh_duckdb",
-        image="f1-duckdb",
-        command=["python", "refresh_duckdb.py"],
-        api_version="auto",
-        auto_remove="success",
-        docker_url="unix://var/run/docker.sock",
-        network_mode=os.environ["COMPOSE_NETWORK"],
-        mount_tmp_dir=False,
-        environment={
-            "PGHOST": "warehouse",
-            "PGPORT": "5432",
-            "PGDATABASE": os.environ["PGDATABASE"],
-            "PGUSER": os.environ["PGUSER"],
-            "PGPASSWORD": os.environ["PGPASSWORD"],
-        },
-        mounts=[
-            Mount(source="f1-duckdb-data", target="/data", type="volume")
-        ],
+    # Fire-and-forget: this only tells Airflow to start f1_duckdb_refresh and
+    # succeeds immediately. It never waits for or checks that DAG's outcome,
+    # so a bonus-feature failure there can never mark this DAG run failed.
+    trigger_duckdb_refresh = TriggerDagRunOperator(
+        task_id="trigger_duckdb_refresh",
+        trigger_dag_id="f1_duckdb_refresh",
+        wait_for_completion=False,
+        trigger_rule="all_done",
     )
 
-    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse >> refresh_duckdb
+    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse >> trigger_duckdb_refresh
 
 f1_ingestion()

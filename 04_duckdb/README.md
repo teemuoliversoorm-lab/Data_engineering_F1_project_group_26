@@ -1,22 +1,40 @@
-Running the comparison between PostgreSQL and DuckDB after the main setup:
+# DuckDB bonus (Project_2.md 2.5A — columnar engine)
 
-Ensure that both build_warehouse and refresh_duckdb complete successfully in the triggered f1_ingestion DAG.
-Then run:
+Optional: never required for the main pipeline to build or run. See the root
+[`README.md`](../README.md#duckdb-bonus) for how this fits into the DAGs.
 
-docker compose --env-file .env run --rm duckdb-compare
+## Running
 
-If PostgreSQL Gold has been built already and you just want to refresh DuckDB without rerunning the entire DAG:
+```sh
+docker compose --profile tools build duckdb   # build the image (also builds via the normal `--profile tools build`)
+docker compose run --rm duckdb                # refresh the DuckDB copy of gold from PostgreSQL
+docker compose run --rm duckdb-compare        # run Q2 and Q4 in both engines, write results below
+```
 
-docker compose --env-file .env run --rm duckdb-compare python refresh_duckdb.py
+Both commands bind-mount `./04_duckdb/data` into the container, so the
+DuckDB file and the results land directly in this folder (committable to
+git). The automatic version triggered by the `f1_ingestion` DAG
+(`f1_duckdb_refresh`, fired without waiting for it to finish) instead uses an
+internal Docker volume, since there's no host path to bind-mount from inside
+that container — see `00_dags/f1_duckdb_refresh.py`.
 
-DuckDB is used as an optional downstream analytical copy of the PostgreSQL Gold layer. After dbt builds Gold, Airflow refreshes the dimensional tables into a persistent DuckDB database stored in a Docker volume. DuckDB is a good fit for the analytical workload because its columnar storage is designed for reading selected columns across many rows and performing joins and aggregations. This matches Q2, which groups and sums position changes by season and team, and Q4, which joins lap, event, driver and race-result data to identify cases where the P1 starter retained the lead after lap 1. 
+This runs the Q2 and Q4 business questions and outputs a comparison table
+between PostgreSQL and DuckDB.
 
-PostgreSQL remains the primary warehouse because it supports ingestion and the full Bronze–Silver–Gold transformation workflow, while DuckDB is refreshed in batches and used only for analytics. To validate DuckDB, queries Q2 and Q4 were executed in both engines. Each query was run once for warm-up and five additional times per engine, with median execution times reported. As can be seen in Table 1, in the current small dataset, PostgreSQL was faster for Q2 and Q4, although both engines returned identical results. The comparison therefore demonstrates DuckDB's suitability as a columnar analytical layer rather than claiming a general performance advantage. 
+DuckDB was added as an optional analytical layer using a copy of the PostgreSQL Gold dimensional model. Refresh scripts replicate the Gold schema into native DuckDB tables, keeping DuckDB independent of the main pipeline.
+
+DuckDB is used as an optional analytical copy of the PostgreSQL Gold layer. Its columnar storage is well suited to the read-heavy query patterns in this project, where queries scan fact-table columns, join them with relatively small dimensions, and perform grouping and aggregation. This fits queries such as Q2, which aggregates position changes by team, and Q4, which joins lap-level data with event, driver, and result data to identify whether the pole-position driver retained the lead after lap 1.
+
+PostgreSQL remains the primary warehouse because the dataset is small, the pipeline also performs ingestion and dbt-managed transformations there, and PostgreSQL provides a convenient relational store for the full Bronze–Silver–Gold workflow. DuckDB is therefore used mainly as a lightweight columnar analytical layer rather than as a replacement for PostgreSQL. In our measurements, PostgreSQL was slightly faster for the tested queries because the dataset is too small for DuckDB's columnar advantages to clearly outweigh per-query overhead. The comparison therefore demonstrates the architectural fit of DuckDB for analytical workloads rather than a general performance advantage over PostgreSQL.
+
+To validate DuckDB, Q2 and Q4 were executed in both engines, producing identical results. Each query was run once for warm-up and five additional times per engine, with median execution times reported.
 
 | Query | Same result? | PostgreSQL median (ms) | DuckDB median (ms) |
 |---|---|---|---|
-| b – Team position change | Yes | 0.754 | 4.009 |
-| d – Pole retained lead after lap 1 | Yes | 1.086 | 8.631 |
+| Q2 – Team position change | Yes | 1.627 | 3.873 |
+| Q4 – Pole retained lead after lap 1 | Yes | 1.827 | 4.326 |
 
-*Table 1. Query execution time comparison.*
+*Table 1. Query execution time comparison. These are small-dataset results,
+not a general performance benchmark — see discussion above.*
 
+DuckDB introduces an additional Gold data copy that requires refreshing when PostgreSQL changes. However, it demonstrates that the same dimensional model can support a columnar analytical engine while producing identical results. DuckDB may become more beneficial as data volume and fact-table width increase, but PostgreSQL remains sufficient for the current project.

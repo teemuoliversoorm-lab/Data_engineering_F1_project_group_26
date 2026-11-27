@@ -3,17 +3,18 @@ import statistics
 import time
 from decimal import Decimal
 import duckdb
-import psycopg2
+import psycopg
 from pathlib import Path
 
-# Queries
-
+# Queries -- baked into the image at build time (docker/duckdb.Dockerfile),
+# so this works identically via `docker compose run` or Airflow's
+# DockerOperator (Docker-outside-of-Docker has no clean host path to bind-mount).
 QUERY_FILES = {
     "Q2 - team position change":
-        "/queries/query_02_team_position_change.sql",
+        "queries/query_02_team_position_change.sql",
 
     "Q4 - P1 retained lead after lap 1":
-        "/queries/query_04_lap1_leader.sql",
+        "queries/query_04_lap1_leader.sql",
 }
 
 
@@ -35,7 +36,7 @@ DUCKDB_QUERIES = {
 
 # Connections
 
-pg = psycopg2.connect(
+pg = psycopg.connect(
     host=os.getenv("PGHOST", "warehouse"),
     port=os.getenv("PGPORT", "5432"),
     dbname=os.getenv("PGDATABASE", "f1_warehouse"),

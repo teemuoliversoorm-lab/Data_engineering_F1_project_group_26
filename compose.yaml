@@ -19,6 +19,8 @@ x-airflow: &airflow
     # Used by the DAG's DockerOperator task to launch the dbt image as a
     # sibling container on the same compose network -- see 00_dags/f1_ingestion.py.
     DBT_IMAGE: ${COMPOSE_PROJECT_NAME:-data_engineering_f1_project_group_26}-dbt:latest
+    # Used by 00_dags/f1_duckdb_refresh.py (the bonus DuckDB DAG) the same way.
+    DUCKDB_IMAGE: ${COMPOSE_PROJECT_NAME:-data_engineering_f1_project_group_26}-duckdb:latest
     COMPOSE_NETWORK: ${COMPOSE_PROJECT_NAME:-data_engineering_f1_project_group_26}_default
   volumes:
     - airflow-logs:/opt/airflow/logs
@@ -148,33 +150,45 @@ services:
         condition: service_healthy
     command: [build]
 
-  duckdb-image:
-    image: f1-duckdb
-    build:
-      context: ./04_duckdb
-    command: ["python", "-c", "print('f1-duckdb image ready')"]
-    restart: "no"
-
-  duckdb-compare:
-    image: f1-duckdb
+  # Bonus (Project_2.md 2.5A): a DuckDB copy of gold, refreshed from the same
+  # warehouse, to compare a columnar engine against PostgreSQL. Optional --
+  # never required for the main pipeline to build/run. See 04_duckdb/README.md.
+  duckdb:
     profiles: [tools]
+    build:
+      context: .
+      dockerfile: docker/duckdb.Dockerfile
     depends_on:
       warehouse:
         condition: service_healthy
-    environment:
+    environment: &duckdb-env
       PGHOST: warehouse
       PGPORT: "5432"
       PGDATABASE: ${POSTGRES_DB:-f1_warehouse}
       PGUSER: ${POSTGRES_USER:-f1}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
-      - duckdb-data:/data
-      - ./03_queries:/queries:ro
+      - ./04_duckdb/data:/data
+    command: ["python", "refresh_duckdb.py"]
+
+  duckdb-compare:
+    image: ${COMPOSE_PROJECT_NAME:-data_engineering_f1_project_group_26}-duckdb:latest
+    profiles: [tools]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    environment: *duckdb-env
+    volumes:
+      - ./04_duckdb/data:/data
     command: ["python", "compare_engines.py"]
 
 volumes:
   warehouse-data:
   airflow-db-data:
   airflow-logs:
+  # Used only by the DAG-triggered automatic refresh (00_dags/f1_duckdb_refresh.py),
+  # which has no host path to bind-mount (Docker-outside-of-Docker). Manual
+  # runs via `docker compose run --rm duckdb[-compare]` use ./04_duckdb/data
+  # instead, so results land in the repo -- see 04_duckdb/README.md.
   duckdb-data:
     name: f1-duckdb-data

@@ -209,6 +209,25 @@ before — the automation is additive, not a replacement for manual runs.
 
 ---
 
+## DuckDB bonus
+
+Optional (Project_2.md 2.5A, columnar engine) — never required for the
+required pipeline to build or run. Full writeup, query results, and manual
+run commands: [`04_duckdb/README.md`](04_duckdb/README.md).
+
+`build_warehouse`'s last step in `f1_ingestion` fires a **separate** DAG,
+`f1_duckdb_refresh` (refresh DuckDB from gold, then compare two business
+queries against PostgreSQL), via `TriggerDagRunOperator(wait_for_completion=False)`.
+That operator's only job is "tell Airflow to start this other DAG" — it
+succeeds the instant the trigger is sent and never checks whether
+`f1_duckdb_refresh` later succeeds or fails. So this bonus feature is
+automatic and part of the implemented pipeline, but **cannot affect
+`f1_ingestion`'s own pass/fail status** — an issue in the bonus DAG shows up
+as its own separate failed run in the Airflow UI, not as a failure of the
+required ingestion/dbt pipeline.
+
+---
+
 ## Idempotency
 
 Two separate layers, in order:

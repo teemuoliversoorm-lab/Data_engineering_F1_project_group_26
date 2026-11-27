@@ -10,3 +10,6 @@ __pycache__/
 02_dbt/logs/
 02_dbt/dbt_packages/
 q*_result.txt
+# Regenerable binary DuckDB file; the committed evidence lives in
+# 04_duckdb/data/results/*.md, which stays tracked.
+04_duckdb/data/*.duckdb
