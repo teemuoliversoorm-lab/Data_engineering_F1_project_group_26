@@ -18,8 +18,11 @@ git). The automatic version triggered by the `f1_ingestion` DAG
 internal Docker volume, since there's no host path to bind-mount from inside
 that container — see `00_dags/f1_duckdb_refresh.py`.
 
-This runs the Q2 and Q4 business questions and outputs a comparison table
-between PostgreSQL and DuckDB.
+| Command | `/data` inside container is… | Results visible in repo? |
+|---|---|---|
+| `docker compose run --rm duckdb` | bind mount `./04_duckdb/data` | **Yes** — writes `f1_analytics.duckdb` into `04_duckdb/data/` |
+| `docker compose run --rm duckdb-compare` | bind mount `./04_duckdb/data` | **Yes** — writes `results/*.md` into `04_duckdb/data/results/` |
+| DAG `f1_duckdb_refresh` (auto or manual trigger) | named volume `f1-duckdb-data` | **No** — writes into the Docker volume |
 
 DuckDB was added as an optional analytical layer using a copy of the PostgreSQL Gold dimensional model. Refresh scripts replicate the Gold schema into native DuckDB tables, keeping DuckDB independent of the main pipeline.
 
@@ -29,10 +32,10 @@ PostgreSQL remains the primary warehouse because the dataset is small, the pipel
 
 To validate DuckDB, Q2 and Q4 were executed in both engines, producing identical results. Each query was run once for warm-up and five additional times per engine, with median execution times reported.
 
-| Query | Same result? | PostgreSQL median (ms) | DuckDB median (ms) |
-|---|---|---|---|
-| Q2 – Team position change | Yes | 1.627 | 3.873 |
-| Q4 – Pole retained lead after lap 1 | Yes | 1.827 | 4.326 |
+| Query | Same result? | Result rows | PostgreSQL median (ms) | DuckDB median (ms) | PostgreSQL EXPLAIN execution (ms) |
+|---|---:|---:|---:|---:|---:|
+| Q2 - team position change | Yes | 21 | 1.320 | 5.143 | 0.942 |
+| Q4 - P1 retained lead after lap 1 | Yes | 33 | 2.851 | 8.904 | 0.666 |
 
 *Table 1. Query execution time comparison. These are small-dataset results,
 not a general performance benchmark — see discussion above.*
