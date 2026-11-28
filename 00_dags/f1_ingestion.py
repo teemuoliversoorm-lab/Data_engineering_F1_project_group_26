@@ -28,16 +28,6 @@ from airflow.operators.python import get_current_context
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 
-# Sessions confirmed permanently unavailable from OpenF1 (not a transient
-# outage -- the laps endpoint 404s for these every time, so extraction can
-# never succeed and the session can never reach bronze to be auto-skipped).
-# See docs/data_model.md. Without this, the weekly DAG would retry and fail
-# on these forever.
-KNOWN_PERMANENT_GAPS = {
-    (2025, 17, "Q"),  # Baku 2025 Qualifying: OpenF1 has no published lap data
-}
-
-
 @dag(
     dag_id="f1_ingestion",
     # Airflow interprets a cron schedule in the DAG's timezone, taken from
@@ -90,7 +80,7 @@ def f1_ingestion():
                     continue  # race weekend hasn't happened yet
                 for session_type in config["sessions"]:
                     key = (config["season"], round_number, session_type)
-                    if key in loaded or key in KNOWN_PERMANENT_GAPS:
+                    if key in loaded:
                         continue
                     batches.append({"season": config["season"], "round_number": round_number,
                                     "session_type": session_type, "cutoff": cutoff})
@@ -110,8 +100,10 @@ def f1_ingestion():
 
         @task
         def check(payload):
-            from ingestion.quality import check_dataset
-            check_dataset("laps", payload["laps"])
+            from ingestion.quality import KNOWN_MISSING_LAPS, check_dataset
+            meta = payload["metadata"]
+            check_dataset("laps", payload["laps"],
+                          allow_empty=(meta["season"], meta["round_number"], meta["session_type"]) in KNOWN_MISSING_LAPS)
             check_dataset("session_results", payload["session_results"])
             return payload
 

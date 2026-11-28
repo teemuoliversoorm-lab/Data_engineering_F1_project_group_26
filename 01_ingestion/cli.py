@@ -5,7 +5,7 @@ import json
 
 from ingestion.extract import extract_session
 from ingestion.load_bronze import initialize_database, load_session
-from ingestion.quality import check_dataset
+from ingestion.quality import KNOWN_MISSING_LAPS, check_dataset
 
 
 def main():
@@ -33,7 +33,9 @@ def main():
         result = {"status": "initialized"}
     else:  # ingest
         payload = extract_session(**args)
-        check_dataset("laps", payload["laps"])
+        meta = payload["metadata"]
+        check_dataset("laps", payload["laps"],
+                      allow_empty=(meta["season"], meta["round_number"], meta["session_type"]) in KNOWN_MISSING_LAPS)
         check_dataset("session_results", payload["session_results"])
         result = load_session(payload)
     print(json.dumps(result, indent=2, default=str))

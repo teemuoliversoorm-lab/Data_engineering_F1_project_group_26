@@ -8,7 +8,7 @@ DAG passes the result from task to task through XCom (see 00_dags/f1_ingestion.p
 from datetime import date, datetime, timezone
 
 from ingestion.openf1 import OpenF1Client, adapt, parse_timestamp, schedule
-from ingestion.quality import DataQualityError, validate_parameters
+from ingestion.quality import KNOWN_MISSING_LAPS, DataQualityError, validate_parameters
 
 SESSION_NAMES = {"Q": "Qualifying", "R": "Race"}
 
@@ -37,7 +37,10 @@ def extract_session(season, round_number, session_type, cutoff, client=None):
     meeting = client.get("meetings", meeting_key=race["meeting_key"])[0]
     key = session["session_key"]
 
-    raw_laps = client.get("laps", session_key=key)
+    # Laps may be empty only for sessions listed in KNOWN_MISSING_LAPS; the
+    # results below are still loaded for them.
+    raw_laps = client.get("laps", allow_empty=(season, round_number, session_type) in KNOWN_MISSING_LAPS,
+                          session_key=key)
     raw_results = client.get("session_result", session_key=key)
     drivers = client.get("drivers", session_key=key)
     positions = client.get("position", session_key=key, allow_empty=True) if session_type == "R" else []

@@ -16,6 +16,16 @@ REQUIRED_COLUMNS = {
 }
 
 
+# Sessions where OpenF1 permanently has NO lap data (its laps endpoint always
+# 404s) but still publishes session_result. Only these may load with zero
+# laps; for any other session an empty laps response is treated as an error,
+# so a temporary OpenF1 problem can never load a session without its laps.
+# See docs/data_model.md.
+KNOWN_MISSING_LAPS = {
+    (2025, 17, "Q"),  # Baku 2025 Qualifying
+}
+
+
 class DataQualityError(ValueError):
     """Raised when a batch of source data fails validation and must not be loaded."""
 
@@ -34,7 +44,7 @@ def validate_parameters(season, rounds, sessions, cutoff):
     return {"season": season, "rounds": rounds, "sessions": sessions, "cutoff": cutoff}
 
 
-def check_dataset(dataset, rows):
+def check_dataset(dataset, rows, allow_empty=False):
     """The pipeline's required data-quality check.
 
     Rejects a batch that is empty, missing required fields, has duplicate
@@ -44,7 +54,7 @@ def check_dataset(dataset, rows):
     """
     if dataset not in DATASETS:
         raise DataQualityError(f"Unknown dataset: {dataset}")
-    if not rows:
+    if not rows and not allow_empty:
         raise DataQualityError(f"{dataset}: empty source cannot replace valid data")
 
     seen_keys = set()

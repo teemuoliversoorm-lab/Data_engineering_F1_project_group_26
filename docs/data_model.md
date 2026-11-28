@@ -56,6 +56,12 @@ How raw OpenF1 fields become the warehouse's field names (see
   those flags. Left in place deliberately: if OpenF1 resumes sending string
   codes, `openf1.py`'s mapping will populate it again with no downstream
   changes needed.
+- **Baku 2025 qualifying has no lap data.** OpenF1's `laps` endpoint always
+  returns 404 for it, but `session_result` is published (positions and pole
+  winner). `KNOWN_MISSING_LAPS` in `01_ingestion/quality.py` lets exactly this
+  session load with zero laps; for every other session, empty laps is still an
+  error. Its qualifying positions count in Q1/Q5; its lap-based gap is NULL,
+  so Q6 skips it.
 - **Qualifying time comparisons can cross stages.** `QualifyingGapToPole` in
   gold compares `coalesce(Q3, Q2, Q1)` for both drivers; if one reached Q3 and
   the other was eliminated in Q1, the gap reflects different track conditions.
