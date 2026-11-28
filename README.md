@@ -209,6 +209,68 @@ before — the automation is additive, not a replacement for manual runs.
 
 ---
 
+## How the DAG behaves when things fail
+
+`f1_ingestion` has this task order:
+
+```
+plan_sessions -> ingest_session (one extract -> check -> load per session)
+              -> build_warehouse (dbt build) -> trigger_duckdb_refresh -> report_status
+```
+
+### The design choice
+
+`build_warehouse` and `trigger_duckdb_refresh` use `trigger_rule="all_done"`:
+they run once everything before them has *finished*, whether it succeeded or
+failed. Airflow's default (`all_success`) would skip them after any failure.
+We deliberately chose `all_done` because:
+
+- **One bad session must not block the rest.** Sessions load independently and
+  each load is atomic (all of a session's rows or none), so bronze never holds
+  half a session. If OpenF1 hiccups on one session, the other sessions still
+  reach silver/gold instead of waiting for a human to fix one problem.
+- **`dbt build` is safe to run on partial data.** It rebuilds silver/gold from
+  whatever is in bronze, and its 27 tests fail the task if the result is
+  inconsistent (duplicates, orphaned keys, bad lap times).
+- **It is idempotent.** Re-running it on unchanged bronze gives identical gold.
+
+The catch: Airflow decides a run's final state from its *last* tasks only.
+If `trigger_duckdb_refresh` were last, it would succeed and the run would show
+green even when ingestion failed (we reproduced exactly this). So the final
+task, `report_status`, also uses `all_done`, looks at every task in the run,
+and **fails the run if any task failed or was blocked by a failure**. Result:
+partial data still gets refreshed, but a failure is never hidden.
+
+### What happens in each scenario
+
+| Scenario | ingest_session | build_warehouse | trigger_duckdb_refresh | report_status | Run state |
+|---|---|---|---|---|---|
+| Normal week, new race loaded | success | runs | runs | success | success |
+| Nothing new (no race, or all already loaded) | skipped (nothing to map) | runs (rebuilds same data) | runs | success | success |
+| One session fails (e.g. OpenF1 error), others fine | that session failed, rest success | runs on the data that loaded | runs | **fails**, names the failed task | **failed** |
+| OpenF1 live-session lock (HTTP 401) on every call | all failed, or `plan_sessions` failed | runs on existing data | runs | **fails** | **failed** |
+| `plan_sessions` fails (e.g. calendar unreachable, bad config) | upstream_failed (never ran) | runs, rebuilds unchanged data | runs | **fails** | **failed** |
+| `build_warehouse` fails (dbt test or model error) | success | failed | runs | **fails** | **failed** |
+| `f1_duckdb_refresh` fails later | unaffected | unaffected | already succeeded (it only sends the trigger) | success | **success** (see that DAG's own status) |
+
+Failed tasks retry first (the DAG's default retries), so the table shows the
+state after retries are used up.
+
+### The known trade-off
+
+When `plan_sessions` fails, nothing new was loaded, so `build_warehouse` and
+`trigger_duckdb_refresh` just redo work on unchanged data (about 15 seconds).
+That is wasted but harmless, and the run still turns red via `report_status`.
+We accepted this on purpose to keep the DAG simple: skipping them only in this
+case needs an extra gate task and one more concept for newcomers to follow.
+
+If the data grows large enough that an empty rebuild becomes slow or costly,
+revisit this: make `build_warehouse` depend on `plan_sessions` succeeding (the
+mapped sessions can stay `all_done`), so a planning failure skips dbt and
+DuckDB instead of repeating them.
+
+---
+
 ## DuckDB bonus
 
 Optional (Project_2.md 2.5A, columnar engine) — never required for the

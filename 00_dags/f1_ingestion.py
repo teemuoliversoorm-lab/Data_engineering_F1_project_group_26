@@ -12,7 +12,9 @@ below). After all sessions are attempted, build_warehouse runs `dbt build`
 gold from whatever is now in bronze, even if some sessions failed. Finally,
 trigger_duckdb_refresh fires the separate f1_duckdb_refresh DAG (bonus,
 Project_2.md 2.5A) without waiting for it, so that DAG's outcome can never
-affect this one's status -- see README "DuckDB bonus".
+affect this one's status -- see README "DuckDB bonus". The last task,
+report_status, fails the run if any earlier task failed, so partial refreshes
+still happen but a failed ingestion is never reported as success.
 """
 
 import os
@@ -20,6 +22,7 @@ from datetime import date, timedelta
 
 import pendulum
 from airflow.decorators import dag, task, task_group
+from airflow.exceptions import AirflowException
 from airflow.models.param import Param
 from airflow.operators.python import get_current_context
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
@@ -157,6 +160,25 @@ def f1_ingestion():
         trigger_rule="all_done",
     )
 
-    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse >> trigger_duckdb_refresh
+    # Airflow derives a run's final state from its leaf tasks only. Because
+    # build_warehouse and trigger_duckdb_refresh use all_done (so partial data
+    # still refreshes gold), a failed plan_sessions/extract/load would otherwise
+    # leave a green leaf and the run would report success. This last task keeps
+    # the partial refresh but fails the run if anything upstream failed.
+    @task(trigger_rule="all_done", retries=0)
+    def report_status():
+        dag_run = get_current_context()["dag_run"]
+        failed = sorted({
+            f"{ti.task_id}[{ti.map_index}]" if ti.map_index >= 0 else ti.task_id
+            for ti in dag_run.get_task_instances()
+            if ti.task_id != "report_status" and ti.state in ("failed", "upstream_failed")
+        })
+        if failed:
+            raise AirflowException(
+                f"{len(failed)} task(s) failed or were blocked by a failure: {', '.join(failed)}"
+            )
+
+    ingest_session.expand(parameters=plan_sessions()) >> build_warehouse >> trigger_duckdb_refresh >> report_status()
+
 
 f1_ingestion()
